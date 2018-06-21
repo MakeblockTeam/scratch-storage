@@ -71,7 +71,14 @@ class WebHelper extends Helper {
                     nets({url: url}, (err, resp, body) => {
                         // body is a Buffer
                         if (err) {
-                            tryNextSource();
+                            // 兼容处理: file:// 协议下 ajax 请求，通过走 rawRequest, status code 为 0
+                            if(resp.statusCode === 0 && resp.rawRequest && resp.rawRequest.readyState === 4){
+                                let body2 = new Buffer(new Uint8Array(resp.rawRequest.response));
+                                asset.setData(body2, dataFormat);
+                                fulfill(asset);
+                            }else{
+                                tryNextSource();
+                            }
                         } else {
                             asset.setData(body, dataFormat);
                             fulfill(asset);
