@@ -1,7 +1,8 @@
 const path = require('path');
-const webpack = require('webpack');
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 
 const base = {
+    mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
     devtool: 'cheap-module-source-map',
     module: {
         rules: [
@@ -12,18 +13,20 @@ const base = {
                 test: /\.js$/,
                 loader: 'babel-loader',
                 options: {
-                    presets: ['es2015']
+                    presets: [['env', {targets: {browsers: ['last 3 versions', 'Safari >= 8', 'iOS >= 8']}}]]
                 }
             }
         ]
     },
-    plugins: [
-        new webpack.optimize.UglifyJsPlugin({
-            include: /\.min\.js$/,
-            minimize: true,
-            sourceMap: true
-        })
-    ]
+    optimization: {
+        minimizer: [
+            new UglifyJsPlugin({
+                include: /\.min\.js$/,
+                sourceMap: true
+            })
+        ]
+    },
+    plugins: []
 };
 
 module.exports = [
@@ -53,6 +56,13 @@ module.exports = [
             libraryTarget: 'commonjs2',
             path: path.resolve('dist', 'node'),
             filename: '[name].js'
+        },
+        externals: {
+            'base64-js': true,
+            'js-md5': true,
+            'localforage': true,
+            'nets': true,
+            'text-encoding': true
         }
     })
 ];

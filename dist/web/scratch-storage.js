@@ -7,7 +7,7 @@
 		exports["ScratchStorage"] = factory();
 	else
 		root["ScratchStorage"] = factory();
-})(this, function() {
+})(window, function() {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -16,9 +16,9 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	function __webpack_require__(moduleId) {
 /******/
 /******/ 		// Check if module is in cache
-/******/ 		if(installedModules[moduleId])
+/******/ 		if(installedModules[moduleId]) {
 /******/ 			return installedModules[moduleId].exports;
-/******/
+/******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = installedModules[moduleId] = {
 /******/ 			i: moduleId,
@@ -43,18 +43,35 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// expose the module cache
 /******/ 	__webpack_require__.c = installedModules;
 /******/
-/******/ 	// identity function for calling harmony imports with the correct context
-/******/ 	__webpack_require__.i = function(value) { return value; };
-/******/
 /******/ 	// define getter function for harmony exports
 /******/ 	__webpack_require__.d = function(exports, name, getter) {
 /******/ 		if(!__webpack_require__.o(exports, name)) {
-/******/ 			Object.defineProperty(exports, name, {
-/******/ 				configurable: false,
-/******/ 				enumerable: true,
-/******/ 				get: getter
-/******/ 			});
+/******/ 			Object.defineProperty(exports, name, { enumerable: true, get: getter });
 /******/ 		}
+/******/ 	};
+/******/
+/******/ 	// define __esModule on exports
+/******/ 	__webpack_require__.r = function(exports) {
+/******/ 		if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 			Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 		}
+/******/ 		Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 	};
+/******/
+/******/ 	// create a fake namespace object
+/******/ 	// mode & 1: value is a module id, require it
+/******/ 	// mode & 2: merge all properties of value into the ns
+/******/ 	// mode & 4: return value when already ns object
+/******/ 	// mode & 8|1: behave like require
+/******/ 	__webpack_require__.t = function(value, mode) {
+/******/ 		if(mode & 1) value = __webpack_require__(value);
+/******/ 		if(mode & 8) return value;
+/******/ 		if((mode & 4) && typeof value === 'object' && value && value.__esModule) return value;
+/******/ 		var ns = Object.create(null);
+/******/ 		__webpack_require__.r(ns);
+/******/ 		Object.defineProperty(ns, 'default', { enumerable: true, value: value });
+/******/ 		if(mode & 2 && typeof value != 'string') for(var key in value) __webpack_require__.d(ns, key, function(key) { return value[key]; }.bind(null, key));
+/******/ 		return ns;
 /******/ 	};
 /******/
 /******/ 	// getDefaultExport function for compatibility with non-harmony modules
@@ -72,248 +89,77 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// __webpack_public_path__
 /******/ 	__webpack_require__.p = "";
 /******/
+/******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 31);
+/******/ 	return __webpack_require__(__webpack_require__.s = "./src/index.js");
 /******/ })
 /************************************************************************/
-/******/ ([
-/* 0 */
+/******/ ({
+
+/***/ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultBitmap.png":
+/*!**************************************************************************!*\
+  !*** ./node_modules/arraybuffer-loader!./src/builtins/defaultBitmap.png ***!
+  \**************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__(/*! ../../node_modules/arraybuffer-loader/lib/to-array-buffer.js */ "./node_modules/arraybuffer-loader/lib/to-array-buffer.js")("iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAAAAADmVT4XAAADZElEQVR42u3a70vbQBgH8O/7vOibvsmbFUEEWUGGUhQ25nDuhSKIUFDxlYi0SAd94atRmFiHCH2x4W8iiNtwowXRgd1QipJYY3N/1F4kTQ6XLKS9yyHcvWyO8MnT5y53Tw5EcIMESIAESIAESIAESIAEPFVAq/6l8G4oAQCp4aniwbUVJ6BVzafwqKXy1VZMgNb+CHzbyK4ZB+Bi0nnk0VyhsDiSoAmvvnMHmGUVAF6UG+0ffsxRhsRHky/AyCsAUpumX0wAAIs6T4CxDADDtcdZsal6gjmdH8AsAEC6+s8Fa48SFExeAKusAEju+V367AmUCi9ANQ0AU3pwcOw2cMEH0FwAAKz5X228pRLR5AI4TgIAtIDL24oLUE94AB6W7LsH/cONN14Ilh44AOqD9s2LQR1KHiB9zgGgOSGeuA3ocPrME1Q4ANaceyePAzrcjHmAZYs9IBeW4/fzHiAwTCwAgTle9ACZK44ALDT9e6x7gL4aT0BQCHb4AqgA5/1TTOMLoJ7vZSMM0H/GHnCeDnu+CrU8vGYPcN5FADBYD0vCaYPDy+i0p337GSMsS1Z4vA3t9QgAZTt0IuIxFRPSKicAQHlvhk3FXF5GhBByMa8qo/sBO6BarwuYbYrYnFKDYEvE7phKgcxvEQBqnvhgiQCUOgoAO4C3JOS3L/hv23UXxVldBECfcueAqpAa0WGy/QeULREAY6aTXRFDgBuA13+ElOncAERMAGaA9hBQD4gQQHsIRE1AZoD2xrgQS5nOZyHgFKmWDSIG4GRAVidiAE4GRB6AzAB2AKIPQFaA5myHA5AV4ESNugZhC7BLR50lIBPAebrzBGQCKAFQNSIMcDvRTQIwAHxNApM3RBygGK0uyhxwOwGsPAgEnPWj5ycRCNiJtBHlAChGKQVwANzPY+CXSMDNWISiLA9AfRA5IhJQ68UnoQAt+AtOPIBKhJosF8B6UM0yLkAxQk2WCyDX9SiUh1gkQAIkoCuAvjGuquMbuijAtwG7MPL8yBICOHSPk3W8Ne8KcEUdmBi6FADYos+QleIH0N/ogOxd7AD6uAS6WRU8WcBdlgZMG/EnYUlwEpLLoQ4PjzGbiA5UsRMRsbQ+5ziDJmYqJuR6NaMomdXuFuZyPSABEiABEiABEiABEiAc8Bd6VyvCEKGqcQAAAABJRU5ErkJggg==")
+
+/***/ }),
+
+/***/ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultSound.wav":
+/*!*************************************************************************!*\
+  !*** ./node_modules/arraybuffer-loader!./src/builtins/defaultSound.wav ***!
+  \*************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__(/*! ../../node_modules/arraybuffer-loader/lib/to-array-buffer.js */ "./node_modules/arraybuffer-loader/lib/to-array-buffer.js")("UklGRiYAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQIAAAAAAA==")
+
+/***/ }),
+
+/***/ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultVector.svg":
+/*!**************************************************************************!*\
+  !*** ./node_modules/arraybuffer-loader!./src/builtins/defaultVector.svg ***!
+  \**************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__(/*! ../../node_modules/arraybuffer-loader/lib/to-array-buffer.js */ "./node_modules/arraybuffer-loader/lib/to-array-buffer.js")("PD94bWwgdmVyc2lvbj0iMS4wIj8+Cjxzdmcgd2lkdGg9IjEyOCIgaGVpZ2h0PSIxMjgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiA8Zz4KICA8cmVjdCBmaWxsPSIjQ0NDIiBoZWlnaHQ9IjEyOCIgd2lkdGg9IjEyOCIvPgogIDx0ZXh0IGZpbGw9ImJsYWNrIiB5PSIxMDciIHg9IjM1LjUiIGZvbnQtc2l6ZT0iMTI4Ij4/PC90ZXh0PgogPC9nPgo8L3N2Zz4K")
+
+/***/ }),
+
+/***/ "./node_modules/arraybuffer-loader/lib/to-array-buffer.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/arraybuffer-loader/lib/to-array-buffer.js ***!
+  \****************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
+/* WEBPACK VAR INJECTION */(function(Buffer) {
 
+module.exports = function (base64Data) {
+  var isBrowser = typeof window !== 'undefined' && typeof window.atob === 'function'
+  var binary = isBrowser ? window.atob(base64Data) : new Buffer(base64Data, 'base64').toString('binary')
+  var bytes = new Uint8Array(binary.length)
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+  for (var i = 0; i < binary.length; ++i) {
+    bytes[i] = binary.charCodeAt(i)
+  }
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var TextDecoder = __webpack_require__(24).TextDecoder;
-var base64js = __webpack_require__(5);
-
-var memoizedToString = function () {
-    var strings = {};
-    return function (assetId, data) {
-        if (!strings.hasOwnProperty(assetId)) {
-            strings[assetId] = base64js.fromByteArray(data);
-        }
-        return strings[assetId];
-    };
-}();
-
-var Asset = function () {
-    /**
-     * Construct an Asset.
-     * @param {AssetType} assetType - The type of this asset (sound, image, etc.)
-     * @param {string} assetId - The ID of this asset.
-     * @param {DataFormat} [dataFormat] - The format of the data (WAV, PNG, etc.); required iff `data` is present.
-     * @param {Buffer} [data] - The in-memory data for this asset; optional.
-     */
-    function Asset(assetType, assetId, dataFormat, data) {
-        _classCallCheck(this, Asset);
-
-        /** @type {AssetType} */
-        this.assetType = assetType;
-
-        /** @type {string} */
-        this.assetId = assetId;
-
-        this.setData(data, dataFormat || assetType.runtimeFormat);
-
-        /** @type {Asset[]} */
-        this.dependencies = [];
-    }
-
-    _createClass(Asset, [{
-        key: 'setData',
-        value: function setData(data, dataFormat) {
-            if (data && !dataFormat) {
-                throw new Error('Data provided without specifying its format');
-            }
-
-            /** @type {DataFormat} */
-            this.dataFormat = dataFormat;
-
-            /** @type {Buffer} */
-            this.data = data;
-        }
-
-        /**
-         * @returns {string} - This asset's data, decoded as text.
-         */
-
-    }, {
-        key: 'decodeText',
-        value: function decodeText() {
-            var decoder = new TextDecoder();
-            return decoder.decode(this.data);
-        }
-
-        /**
-         * @param {string} [contentType] - Optionally override the content type to be included in the data URI.
-         * @returns {string} - A data URI representing the asset's data.
-         */
-
-    }, {
-        key: 'encodeDataURI',
-        value: function encodeDataURI(contentType) {
-            contentType = contentType || this.assetType.contentType;
-            return 'data:' + contentType + ';base64,' + memoizedToString(this.assetId, this.data);
-        }
-    }]);
-
-    return Asset;
-}();
-
-module.exports = Asset;
-
-/***/ }),
-/* 1 */
-/***/ (function(module, exports) {
-
-var g;
-
-// This works in non-strict mode
-g = (function() {
-	return this;
-})();
-
-try {
-	// This works if eval is allowed (see CSP)
-	g = g || Function("return this")() || (1,eval)("this");
-} catch(e) {
-	// This works if the window reference is available
-	if(typeof window === "object")
-		g = window;
+  return bytes.buffer
 }
 
-// g can still be undefined, but nothing to do about it...
-// We return undefined, instead of nothing here, so it's
-// easier to handle this case. if(!global) { ...}
-
-module.exports = g;
-
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../buffer/index.js */ "./node_modules/buffer/index.js").Buffer))
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-
-
-/**
- * Enumeration of the supported data formats.
- * @enum {string}
- */
-var DataFormat = {
-    JPG: 'jpg',
-    JSON: 'json',
-    PNG: 'png',
-    SB2: 'sb2',
-    SVG: 'svg',
-    WAV: 'wav'
-};
-
-module.exports = DataFormat;
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-/**
- * Base class for asset load/save helpers.
- * @abstract
- */
-var Helper = function () {
-    function Helper(parent) {
-        _classCallCheck(this, Helper);
-
-        this.parent = parent;
-    }
-
-    /**
-     * Fetch an asset but don't process dependencies.
-     * @param {AssetType} assetType - The type of asset to fetch.
-     * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-     * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
-     * @return {Promise.<Asset>} A promise for the contents of the asset.
-     */
-
-
-    _createClass(Helper, [{
-        key: "load",
-        value: function load(assetType, assetId, dataFormat) {
-            return Promise.reject(new Error("No asset of type " + assetType + " for ID " + assetId + " with format " + dataFormat));
-        }
-    }]);
-
-    return Helper;
-}();
-
-module.exports = Helper;
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var DataFormat = __webpack_require__(2);
-
-/**
- * Enumeration of the supported asset types.
- * @type {Object.<String,AssetType>}
- * @typedef {Object} AssetType - Information about a supported asset type.
- * @property {string} contentType - the MIME type associated with this kind of data. Useful for data URIs, etc.
- * @property {string} name - The human-readable name of this asset type.
- * @property {DataFormat} runtimeFormat - The default format used for runtime, in-memory storage of this asset. For
- *     example, a project stored in SB2 format on disk will be returned as JSON when loaded into memory.
- * @property {boolean} immutable - Indicates if the asset id is determined by the asset content.
- */
-var AssetType = {
-    ImageBitmap: {
-        contentType: 'image/png',
-        name: 'ImageBitmap',
-        runtimeFormat: DataFormat.PNG,
-        immutable: true
-    },
-    ImageVector: {
-        contentType: 'image/svg+xml',
-        name: 'ImageVector',
-        runtimeFormat: DataFormat.SVG,
-        immutable: true
-    },
-    Project: {
-        contentType: 'application/json',
-        name: 'Project',
-        runtimeFormat: DataFormat.JSON,
-        immutable: false
-    },
-    Sound: {
-        contentType: 'audio/x-wav',
-        name: 'Sound',
-        runtimeFormat: DataFormat.WAV,
-        immutable: true
-    },
-    Sprite: {
-        contentType: 'application/json',
-        name: 'Sprite',
-        runtimeFormat: DataFormat.JSON,
-        immutable: true
-    }
-};
-
-module.exports = AssetType;
-
-/***/ }),
-/* 5 */
+/***/ "./node_modules/base64-js/index.js":
+/*!*****************************************!*\
+  !*** ./node_modules/base64-js/index.js ***!
+  \*****************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -434,7 +280,12 @@ function fromByteArray (uint8) {
 
 
 /***/ }),
-/* 6 */
+
+/***/ "./node_modules/buffer/index.js":
+/*!**************************************!*\
+  !*** ./node_modules/buffer/index.js ***!
+  \**************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -448,9 +299,9 @@ function fromByteArray (uint8) {
 
 
 
-var base64 = __webpack_require__(5)
-var ieee754 = __webpack_require__(18)
-var isArray = __webpack_require__(19)
+var base64 = __webpack_require__(/*! base64-js */ "./node_modules/base64-js/index.js")
+var ieee754 = __webpack_require__(/*! ieee754 */ "./node_modules/buffer/node_modules/ieee754/index.js")
+var isArray = __webpack_require__(/*! isarray */ "./node_modules/isarray/index.js")
 
 exports.Buffer = Buffer
 exports.SlowBuffer = SlowBuffer
@@ -2228,875 +2079,15 @@ function isnan (val) {
   return val !== val // eslint-disable-line no-self-compare
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
 
 /***/ }),
-/* 7 */
-/***/ (function(module, exports) {
 
-module.exports = isFunction
-
-var toString = Object.prototype.toString
-
-function isFunction (fn) {
-  var string = toString.call(fn)
-  return string === '[object Function]' ||
-    (typeof fn === 'function' && string !== '[object RegExp]') ||
-    (typeof window !== 'undefined' &&
-     // IE8 and below
-     (fn === window.setTimeout ||
-      fn === window.alert ||
-      fn === window.confirm ||
-      fn === window.prompt))
-};
-
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports) {
-
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-process.prependListener = noop;
-process.prependOnceListener = noop;
-
-process.listeners = function (name) { return [] }
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var BuiltinHelper = __webpack_require__(10);
-var LocalHelper = __webpack_require__(11);
-var WebHelper = __webpack_require__(12);
-
-var _Asset = __webpack_require__(0);
-var _AssetType = __webpack_require__(4);
-var _DataFormat = __webpack_require__(2);
-
-var ScratchStorage = function () {
-    function ScratchStorage() {
-        _classCallCheck(this, ScratchStorage);
-
-        this.defaultAssetId = {};
-
-        this.builtinHelper = new BuiltinHelper(this);
-        this.webHelper = new WebHelper(this);
-        this.localHelper = new LocalHelper(this);
-
-        this.builtinHelper.registerDefaultAssets(this);
-    }
-
-    /**
-     * @return {Asset} - the `Asset` class constructor.
-     * @constructor
-     */
-
-
-    _createClass(ScratchStorage, [{
-        key: 'get',
-
-
-        /**
-         * Synchronously fetch a cached asset from built-in storage. Assets are cached when they are loaded.
-         * @param {string} assetId - The id of the asset to fetch.
-         * @returns {?Asset} The asset, if it exists.
-         */
-        value: function get(assetId) {
-            return this.builtinHelper.get(assetId);
-        }
-
-        /**
-         * Register a web-based source for assets. Sources will be checked in order of registration.
-         * @param {Array.<AssetType>} types - The types of asset provided by this source.
-         * @param {UrlFunction} urlFunction - A function which computes a URL from an Asset.
-         */
-
-    }, {
-        key: 'addWebSource',
-        value: function addWebSource(types, urlFunction) {
-            this.webHelper.addSource(types, urlFunction);
-        }
-
-        /**
-         * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
-         * @param {AssetType} type - Get the default ID for assets of this type.
-         * @return {?string} The ID of the default asset of the given type, if any.
-         */
-
-    }, {
-        key: 'getDefaultAssetId',
-        value: function getDefaultAssetId(type) {
-            if (this.defaultAssetId.hasOwnProperty(type.name)) {
-                return this.defaultAssetId[type.name];
-            }
-        }
-
-        /**
-         * Set the default ID for a particular type of asset. This default asset will be used if a requested asset cannot
-         * be found and automatic fallback is enabled. Ideally this should be an asset that is available locally or even
-         * one built into this module.
-         * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
-         * @param {AssetType} type - The type of asset for which the default will be set.
-         * @param {string} id - The default ID to use for this type of asset.
-         */
-
-    }, {
-        key: 'setDefaultAssetId',
-        value: function setDefaultAssetId(type, id) {
-            this.defaultAssetId[type.name] = id;
-        }
-
-        /**
-         * Fetch an asset by type & ID.
-         * @param {AssetType} assetType - The type of asset to fetch. This also determines which asset store to use.
-         * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-         * @param {DataFormat} [dataFormat] - Optional: load this format instead of the AssetType's default.
-         * @return {Promise.<Asset>} A promise for the requested Asset.
-         *   If the promise is fulfilled with non-null, the value is the requested asset or a fallback.
-         *   If the promise is fulfilled with null, the desired asset could not be found with the current asset sources.
-         *   If the promise is rejected, there was an error on at least one asset source. HTTP 404 does not count as an
-         *   error here, but (for example) HTTP 403 does.
-         */
-
-    }, {
-        key: 'load',
-        value: function load(assetType, assetId, dataFormat) {
-            var _this = this;
-
-            /** @type {Helper[]} */
-            var helpers = [this.builtinHelper, this.localHelper, this.webHelper];
-            var errors = [];
-            var helperIndex = 0;
-            dataFormat = dataFormat || assetType.runtimeFormat;
-
-            return new Promise(function (fulfill, reject) {
-                var tryNextHelper = function tryNextHelper() {
-                    if (helperIndex < helpers.length) {
-                        var helper = helpers[helperIndex++];
-                        helper.load(assetType, assetId, dataFormat).then(function (asset) {
-                            if (asset === null) {
-                                tryNextHelper();
-                            } else {
-                                // TODO? this.localHelper.cache(assetType, assetId, asset);
-                                if (helper !== _this.builtinHelper && assetType.immutable) {
-                                    asset.assetId = _this.builtinHelper.cache(assetType, asset.dataFormat, asset.data, assetId);
-                                }
-                                // Note that other attempts may have caused errors, effectively suppressed here.
-                                fulfill(asset);
-                            }
-                        }, function (error) {
-                            errors.push(error);
-                            // TODO: maybe some types of error should prevent trying the next helper?
-                            tryNextHelper();
-                        });
-                    } else if (errors.length === 0) {
-                        // Nothing went wrong but we couldn't find the asset.
-                        fulfill(null);
-                    } else {
-                        // At least one thing went wrong and also we couldn't find the asset.
-                        reject(errors);
-                    }
-                };
-
-                tryNextHelper();
-            });
-        }
-    }, {
-        key: 'Asset',
-        get: function get() {
-            return _Asset;
-        }
-
-        /**
-         * @return {AssetType} - the list of supported asset types.
-         * @constructor
-         */
-
-    }, {
-        key: 'AssetType',
-        get: function get() {
-            return _AssetType;
-        }
-
-        /**
-         * @return {DataFormat} - the list of supported data formats.
-         * @constructor
-         */
-
-    }, {
-        key: 'DataFormat',
-        get: function get() {
-            return _DataFormat;
-        }
-
-        /**
-         * @deprecated Please use the `Asset` member of a storage instance instead.
-         * @return {Asset} - the `Asset` class constructor.
-         * @constructor
-         */
-
-    }], [{
-        key: 'Asset',
-        get: function get() {
-            return _Asset;
-        }
-
-        /**
-         * @deprecated Please use the `AssetType` member of a storage instance instead.
-         * @return {AssetType} - the list of supported asset types.
-         * @constructor
-         */
-
-    }, {
-        key: 'AssetType',
-        get: function get() {
-            return _AssetType;
-        }
-    }]);
-
-    return ScratchStorage;
-}();
-
-module.exports = ScratchStorage;
-
-/***/ }),
-/* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var md5 = __webpack_require__(20);
-
-var Asset = __webpack_require__(0);
-var AssetType = __webpack_require__(4);
-var DataFormat = __webpack_require__(2);
-var Helper = __webpack_require__(3);
-
-/**
- * @typedef {object} BuiltinAssetRecord
- * @property {AssetType} type - The type of the asset.
- * @property {DataFormat} format - The format of the asset's data.
- * @property {?string} id - The asset's unique ID.
- * @property {Buffer} data - The asset's data.
- */
-
-/**
- * @type {BuiltinAssetRecord[]}
- */
-var DefaultAssets = [{
-    type: AssetType.ImageBitmap,
-    format: DataFormat.PNG,
-    id: null,
-    data: __webpack_require__(13) // eslint-disable-line global-require
-}, {
-    type: AssetType.Sound,
-    format: DataFormat.WAV,
-    id: null,
-    data: __webpack_require__(14) // eslint-disable-line global-require
-}, {
-    type: AssetType.ImageVector,
-    format: DataFormat.SVG,
-    id: null,
-    data: __webpack_require__(15) // eslint-disable-line global-require
-}];
-
-/**
- * @type {BuiltinAssetRecord[]}
- */
-var BuiltinAssets = DefaultAssets.concat([]);
-
-var BuiltinHelper = function (_Helper) {
-    _inherits(BuiltinHelper, _Helper);
-
-    function BuiltinHelper(parent) {
-        _classCallCheck(this, BuiltinHelper);
-
-        /**
-         * In-memory storage for all built-in assets.
-         * @type {Object.<AssetType, AssetIdMap>} Maps asset type to a map of asset ID to actual assets.
-         * @typedef {Object.<string, BuiltinAssetRecord>} AssetIdMap - Maps asset ID to asset.
-         */
-        var _this = _possibleConstructorReturn(this, (BuiltinHelper.__proto__ || Object.getPrototypeOf(BuiltinHelper)).call(this, parent));
-
-        _this.assets = {};
-
-        BuiltinAssets.forEach(function (assetRecord) {
-            assetRecord.id = _this.cache(assetRecord.type, assetRecord.format, assetRecord.data, assetRecord.id);
-        });
-        return _this;
-    }
-
-    /**
-     * Call `setDefaultAssetId` on the parent `ScratchStorage` instance to register all built-in default assets.
-     */
-
-
-    _createClass(BuiltinHelper, [{
-        key: 'registerDefaultAssets',
-        value: function registerDefaultAssets() {
-            var numAssets = DefaultAssets.length;
-            for (var assetIndex = 0; assetIndex < numAssets; ++assetIndex) {
-                var assetRecord = DefaultAssets[assetIndex];
-                this.parent.setDefaultAssetId(assetRecord.type, assetRecord.id);
-            }
-        }
-
-        /**
-         * Synchronously fetch a cached asset for a given asset id. Returns null if not found.
-         * @param {string} assetId - The id for the asset to fetch.
-         * @returns {?Asset} The asset for assetId, if it exists.
-         */
-
-    }, {
-        key: 'get',
-        value: function get(assetId) {
-            var asset = null;
-            if (this.assets.hasOwnProperty(assetId)) {
-                /** @type{BuiltinAssetRecord} */
-                var assetRecord = this.assets[assetId];
-                asset = new Asset(assetRecord.type, assetRecord.id, assetRecord.format, assetRecord.data);
-            }
-            return asset;
-        }
-
-        /**
-         * Cache an asset for future lookups by ID.
-         * @param {AssetType} assetType - The type of the asset to cache.
-         * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
-         * @param {Buffer} data - The data for the cached asset.
-         * @param {string} id - The id for the cached asset.
-         * @returns {string} The calculated id of the cached asset, or the supplied id if the asset is mutable.
-         */
-
-    }, {
-        key: 'cache',
-        value: function cache(assetType, dataFormat, data, id) {
-            if (!dataFormat) throw new Error('Data cached without specifying its format');
-            if (id) {
-                if (this.assets.hasOwnProperty(id) && assetType.immutable) return id;
-            } else if (assetType.immutable) {
-                id = md5(data);
-            }
-            this.assets[id] = {
-                type: assetType,
-                format: dataFormat,
-                id: id,
-                data: data
-            };
-            return id;
-        }
-
-        /**
-         * Fetch an asset but don't process dependencies.
-         * @param {AssetType} assetType - The type of asset to fetch.
-         * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-         * @return {Promise.<Asset>} A promise for the contents of the asset.
-         */
-
-    }, {
-        key: 'load',
-        value: function load(assetType, assetId) {
-            return Promise.resolve(this.get(assetId));
-        }
-    }]);
-
-    return BuiltinHelper;
-}(Helper);
-
-module.exports = BuiltinHelper;
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var localforage = __webpack_require__(21);
-
-var Asset = __webpack_require__(0);
-var Helper = __webpack_require__(3);
-
-/**
- * Implements storage on the local device, available even when the device has no network connection.
- */
-
-var LocalHelper = function (_Helper) {
-    _inherits(LocalHelper, _Helper);
-
-    function LocalHelper(parent) {
-        _classCallCheck(this, LocalHelper);
-
-        var _this = _possibleConstructorReturn(this, (LocalHelper.__proto__ || Object.getPrototypeOf(LocalHelper)).call(this, parent));
-
-        localforage.config({
-            name: 'Scratch 3.0',
-            size: 100 * 1024 * 1024
-        });
-        return _this;
-    }
-
-    /**
-     * Fetch an asset but don't process dependencies.
-     * @param {AssetType} assetType - The type of asset to fetch.
-     * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-     * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
-     * @return {Promise.<Asset>} A promise for the contents of the asset.
-     */
-
-
-    _createClass(LocalHelper, [{
-        key: 'load',
-        value: function load(assetType, assetId, dataFormat) {
-            return new Promise(function (fulfill, reject) {
-                var fileName = [assetId, dataFormat].join('.');
-                localforage.getItem(fileName).then(function (data) {
-                    if (data === null) {
-                        fulfill(null);
-                    } else {
-                        fulfill(new Asset(assetType, assetId, dataFormat, data));
-                    }
-                }, function (error) {
-                    reject(error);
-                });
-            });
-        }
-    }]);
-
-    return LocalHelper;
-}(Helper);
-
-module.exports = LocalHelper;
-
-/***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/* WEBPACK VAR INJECTION */(function(Buffer) {
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var nets = __webpack_require__(22);
-
-var Asset = __webpack_require__(0);
-var Helper = __webpack_require__(3);
-
-/**
- * @typedef {function} UrlFunction - A function which computes a URL from asset information.
- * @param {Asset} - The asset for which the URL should be computed.
- * @returns {string} - The URL for the asset.
- */
-
-var WebHelper = function (_Helper) {
-    _inherits(WebHelper, _Helper);
-
-    function WebHelper(parent) {
-        _classCallCheck(this, WebHelper);
-
-        /**
-         * @type {Array.<SourceRecord>}
-         * @typedef {object} SourceRecord
-         * @property {Array.<string>} types - The types of asset provided by this source, from AssetType's name field.
-         * @property {UrlFunction} urlFunction - A function which computes a URL from an Asset.
-         */
-        var _this = _possibleConstructorReturn(this, (WebHelper.__proto__ || Object.getPrototypeOf(WebHelper)).call(this, parent));
-
-        _this.sources = [];
-        return _this;
-    }
-
-    /**
-     * Register a web-based source for assets. Sources will be checked in order of registration.
-     * @param {Array.<AssetType>} types - The types of asset provided by this source.
-     * @param {UrlFunction} urlFunction - A function which computes a URL from an Asset.
-     */
-
-
-    _createClass(WebHelper, [{
-        key: 'addSource',
-        value: function addSource(types, urlFunction) {
-            this.sources.push({
-                types: types.map(function (assetType) {
-                    return assetType.name;
-                }),
-                urlFunction: urlFunction
-            });
-        }
-
-        /**
-         * Fetch an asset but don't process dependencies.
-         * @param {AssetType} assetType - The type of asset to fetch.
-         * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-         * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
-         * @return {Promise.<Asset>} A promise for the contents of the asset.
-         */
-
-    }, {
-        key: 'load',
-        value: function load(assetType, assetId, dataFormat) {
-
-            /** @type {Array.<{url:string, result:*}>} List of URLs attempted & errors encountered. */
-            var errors = [];
-            var sources = this.sources.slice();
-            var asset = new Asset(assetType, assetId, dataFormat);
-            var sourceIndex = 0;
-
-            return new Promise(function (fulfill, reject) {
-
-                var tryNextSource = function tryNextSource() {
-
-                    /** @type {UrlFunction} */
-                    var urlFunction = void 0;
-
-                    while (sourceIndex < sources.length) {
-                        var source = sources[sourceIndex];
-                        ++sourceIndex;
-                        if (source.types.indexOf(assetType.name) >= 0) {
-                            urlFunction = source.urlFunction;
-                            break;
-                        }
-                    }
-
-                    if (urlFunction) {
-                        var url = urlFunction(asset);
-
-                        nets({ url: url }, function (err, resp, body) {
-                            // body is a Buffer
-                            if (err) {
-                                // 兼容处理: file:// 协议下 ajax 请求，通过走 rawRequest, status code 为 0
-                                if (resp.statusCode === 0 && resp.rawRequest && resp.rawRequest.readyState === 4) {
-                                    var body2 = new Buffer(new Uint8Array(resp.rawRequest.response));
-                                    asset.setData(body2, dataFormat);
-                                    fulfill(asset);
-                                } else {
-                                    tryNextSource();
-                                }
-                            } else {
-                                asset.setData(body, dataFormat);
-                                fulfill(asset);
-                            }
-                        });
-                    } else if (errors.length > 0) {
-                        reject(errors);
-                    } else {
-                        fulfill(null); // no sources matching asset
-                    }
-                };
-
-                tryNextSource();
-            });
-        }
-    }]);
-
-    return WebHelper;
-}(Helper);
-
-module.exports = WebHelper;
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(6).Buffer))
-
-/***/ }),
-/* 13 */
-/***/ (function(module, exports) {
-
-module.exports = "PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0000\u0000\u0000\u0000\b\u0000\u0000\u0000\u0000æU>\u0017\u0000\u0000\u0003dIDATxÚíÚïKÛ@\u0018\u0007ðïû¼è¾É\u0015A\u0004YAR\u00146æpî\"PPñ´H\u0007}á«QX\b}±áo\"Ûp£\u0005ÑÝPXcsÔ^$M\u000e,¤½Ë!Ü½lðÉÓç.wO\u000eDp\u0004H\u0004H\u0004H\u0004H\u0004<U@«þ¥ðn(\u0001\u0000©á©âÁµ\u0015' UÍ§ð¨¥òÕVLÖþ\b|ÛÈ®\u0019\u0007àbÒyäÑ\\¡°8 \t¯¾s\u0007e\u0015\u0000^\u001bí\u001f~ÌQÄG/ÀÈ+\u0000R¦_L\u0000\u0000:O±\f\u0000ÃµÇY±©z9\u001fÀ,\u0000@ºúÏ\u0005k\u0012\u0014L^\u0000«¬\u0000Hîù]úì\t\n/@5\r\u0000Szppì6pÁ\u0007Ð\\\u0000\u0000¬ù_m¼¥\u0012Ñä\u00028N\u0002\u0000´ËÛ\u000bPOx\u0000\u001eì»\u0007ýÃ7^\b\u001e8\u0000êöÍA\u001dJ\u001e }Î\u0001 9!¸\rèpúÌ\u0013T8\u0000Ö{'\u0003:Üye= \u0017ã÷ó\u001e 0L,\u00009^ô\u0000+\u0000,4ý{¬{¾\u001aO@P\bvø\u0002¨\u0000çýSLã\u000b ïe#\fÐÆ\u001ep\u000e{¾\nµ<¼f\u000fpÞE\u00000X\u000fKÂiÃËè´§}û\u0019#,KVx¼\ríõ\b\u0000e;t\"â1\u0015\u0013Ò*'\u0000@yoMÅ\\^F\u0010r1¯*£û\u0001; Z¯\u000bmØR`KÄîJÌo\u0011\u0000jø`\u0000:\n\u0000;·$ä·/øoÛu\u0017ÅY]\u0004@rçª\u001aÑa²ý\u0007-\u0011\u0000c¦]\u0011C\u001b×éÜ\u0000DL\u0000fö\u0010P\u000f\u0010@{\bDM@föÆ¸\u0010KÎg!à\u0014©\r\"\u0006àd@V'b\u0000N\u0006D\u001eÌ\u0000v\u0000¢\u000f@Væl\u0003\u0015àDº\u0006a\u000b°KG% \u0013Àyºó\u0004d\u0002(\u0001P5\"\fp;ÑM\u00020\u0000|M\u00027D\u001c \u0018­.Ê\u001cp;\u0001¬<\b\u0004õ£ç'\u0011\bØ´\u0011å\u0000(F)\u0005p\u0000ÜÏcàHÀÍX¢,\u000f@}\u00109\"\u0012PëÅ'¡\u0000-ø\u000bN<J,\u0017ÀzPÍ2.@1BM\u000b ×õ(X$@\u0002$ +¾1®ªã\u001bº(À·\u0001»0òüÈ\u0012\u00028tu¼5ï\npE\u001d\u0018º\u0014\u0000Ø¢Ïâ\u0007Ðßèì]ì\u0000ú¸\u0004ºY\u0015<YÀ]\u0006L\u001bñ'aIp\u0012Ë¡\u000e\u000f1\u000eT±\u0013\u0011±´>ç8&f*&äz5£(Õî\u0016ær= \u0001\u0012 \u0001\u0012 \u0001\u0012 \u0001\u0012 \u001cð\u0017zW+Â\u0010¡ªq\u0000\u0000\u0000\u0000IEND®B`"
-
-/***/ }),
-/* 14 */
-/***/ (function(module, exports) {
-
-module.exports = "RIFF&\u0000\u0000\u0000WAVEfmt \u0010\u0000\u0000\u0000\u0001\u0000\u0001\u0000\"V\u0000\u0000D¬\u0000\u0000\u0002\u0000\u0010\u0000data\u0002\u0000\u0000\u0000\u0000\u0000"
-
-/***/ }),
-/* 15 */
-/***/ (function(module, exports) {
-
-module.exports = "<?xml version=\"1.0\"?>\n<svg width=\"128\" height=\"128\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\">\n <g>\n  <rect fill=\"#CCC\" height=\"128\" width=\"128\"/>\n  <text fill=\"black\" y=\"107\" x=\"35.5\" font-size=\"128\">?</text>\n </g>\n</svg>\n"
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var isFunction = __webpack_require__(7)
-
-module.exports = forEach
-
-var toString = Object.prototype.toString
-var hasOwnProperty = Object.prototype.hasOwnProperty
-
-function forEach(list, iterator, context) {
-    if (!isFunction(iterator)) {
-        throw new TypeError('iterator must be a function')
-    }
-
-    if (arguments.length < 3) {
-        context = this
-    }
-    
-    if (toString.call(list) === '[object Array]')
-        forEachArray(list, iterator, context)
-    else if (typeof list === 'string')
-        forEachString(list, iterator, context)
-    else
-        forEachObject(list, iterator, context)
-}
-
-function forEachArray(array, iterator, context) {
-    for (var i = 0, len = array.length; i < len; i++) {
-        if (hasOwnProperty.call(array, i)) {
-            iterator.call(context, array[i], i, array)
-        }
-    }
-}
-
-function forEachString(string, iterator, context) {
-    for (var i = 0, len = string.length; i < len; i++) {
-        // no such thing as a sparse string.
-        iterator.call(context, string.charAt(i), i, string)
-    }
-}
-
-function forEachObject(object, iterator, context) {
-    for (var k in object) {
-        if (hasOwnProperty.call(object, k)) {
-            iterator.call(context, object[k], k, object)
-        }
-    }
-}
-
-
-/***/ }),
-/* 17 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(global) {var win;
-
-if (typeof window !== "undefined") {
-    win = window;
-} else if (typeof global !== "undefined") {
-    win = global;
-} else if (typeof self !== "undefined"){
-    win = self;
-} else {
-    win = {};
-}
-
-module.exports = win;
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
-
-/***/ }),
-/* 18 */
+/***/ "./node_modules/buffer/node_modules/ieee754/index.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/buffer/node_modules/ieee754/index.js ***!
+  \***********************************************************/
+/*! no static exports found */
 /***/ (function(module, exports) {
 
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
@@ -3186,7 +2177,120 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
 
 
 /***/ }),
-/* 19 */
+
+/***/ "./node_modules/for-each/index.js":
+/*!****************************************!*\
+  !*** ./node_modules/for-each/index.js ***!
+  \****************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var isFunction = __webpack_require__(/*! is-function */ "./node_modules/is-function/index.js")
+
+module.exports = forEach
+
+var toString = Object.prototype.toString
+var hasOwnProperty = Object.prototype.hasOwnProperty
+
+function forEach(list, iterator, context) {
+    if (!isFunction(iterator)) {
+        throw new TypeError('iterator must be a function')
+    }
+
+    if (arguments.length < 3) {
+        context = this
+    }
+    
+    if (toString.call(list) === '[object Array]')
+        forEachArray(list, iterator, context)
+    else if (typeof list === 'string')
+        forEachString(list, iterator, context)
+    else
+        forEachObject(list, iterator, context)
+}
+
+function forEachArray(array, iterator, context) {
+    for (var i = 0, len = array.length; i < len; i++) {
+        if (hasOwnProperty.call(array, i)) {
+            iterator.call(context, array[i], i, array)
+        }
+    }
+}
+
+function forEachString(string, iterator, context) {
+    for (var i = 0, len = string.length; i < len; i++) {
+        // no such thing as a sparse string.
+        iterator.call(context, string.charAt(i), i, string)
+    }
+}
+
+function forEachObject(object, iterator, context) {
+    for (var k in object) {
+        if (hasOwnProperty.call(object, k)) {
+            iterator.call(context, object[k], k, object)
+        }
+    }
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/global/window.js":
+/*!***************************************!*\
+  !*** ./node_modules/global/window.js ***!
+  \***************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global) {var win;
+
+if (typeof window !== "undefined") {
+    win = window;
+} else if (typeof global !== "undefined") {
+    win = global;
+} else if (typeof self !== "undefined"){
+    win = self;
+} else {
+    win = {};
+}
+
+module.exports = win;
+
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
+
+/***/ }),
+
+/***/ "./node_modules/is-function/index.js":
+/*!*******************************************!*\
+  !*** ./node_modules/is-function/index.js ***!
+  \*******************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = isFunction
+
+var toString = Object.prototype.toString
+
+function isFunction (fn) {
+  var string = toString.call(fn)
+  return string === '[object Function]' ||
+    (typeof fn === 'function' && string !== '[object RegExp]') ||
+    (typeof window !== 'undefined' &&
+     // IE8 and below
+     (fn === window.setTimeout ||
+      fn === window.alert ||
+      fn === window.confirm ||
+      fn === window.prompt))
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/isarray/index.js":
+/*!***************************************!*\
+  !*** ./node_modules/isarray/index.js ***!
+  \***************************************/
+/*! no static exports found */
 /***/ (function(module, exports) {
 
 var toString = {}.toString;
@@ -3197,7 +2301,12 @@ module.exports = Array.isArray || function (arr) {
 
 
 /***/ }),
-/* 20 */
+
+/***/ "./node_modules/js-md5/src/md5.js":
+/*!****************************************!*\
+  !*** ./node_modules/js-md5/src/md5.js ***!
+  \****************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(process, global) {var __WEBPACK_AMD_DEFINE_RESULT__;/**
@@ -3226,7 +2335,7 @@ module.exports = Array.isArray || function (arr) {
     root = self;
   }
   var COMMON_JS = !root.JS_MD5_NO_COMMON_JS && typeof module === 'object' && module.exports;
-  var AMD = "function" === 'function' && __webpack_require__(28);
+  var AMD = "function" === 'function' && __webpack_require__(/*! !webpack amd options */ "./node_modules/webpack/buildin/amd-options.js");
   var ARRAY_BUFFER = !root.JS_MD5_NO_ARRAY_BUFFER && typeof ArrayBuffer !== 'undefined';
   var HEX_CHARS = '0123456789abcdef'.split('');
   var EXTRA = [128, 32768, 8388608, -2147483648];
@@ -3872,18 +2981,23 @@ module.exports = Array.isArray || function (arr) {
      */
     root.md5 = exports;
     if (AMD) {
-      !(__WEBPACK_AMD_DEFINE_RESULT__ = function () {
+      !(__WEBPACK_AMD_DEFINE_RESULT__ = (function () {
         return exports;
-      }.call(exports, __webpack_require__, exports, module),
+      }).call(exports, __webpack_require__, exports, module),
 				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
     }
   }
 })();
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(8), __webpack_require__(1)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../process/browser.js */ "./node_modules/process/browser.js"), __webpack_require__(/*! ./../../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
 
 /***/ }),
-/* 21 */
+
+/***/ "./node_modules/localforage/dist/localforage.js":
+/*!******************************************************!*\
+  !*** ./node_modules/localforage/dist/localforage.js ***!
+  \******************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global) {var require;var require;/*!
@@ -3892,7 +3006,7 @@ module.exports = Array.isArray || function (arr) {
     https://localforage.github.io/localForage
     (c) 2013-2017 Mozilla, Apache License 2.0
 */
-(function(f){if(true){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.localforage = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return require(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw (f.code="MODULE_NOT_FOUND", f)}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+(function(f){if(true){module.exports=f()}else { var g; }})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return require(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw (f.code="MODULE_NOT_FOUND", f)}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 (function (global){
 'use strict';
 var Mutation = global.MutationObserver || global.WebKitMutationObserver;
@@ -6199,13 +5313,18 @@ module.exports = localforage_js;
 
 },{"3":3}]},{},[4])(4)
 });
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
 
 /***/ }),
-/* 22 */
+
+/***/ "./node_modules/nets/index.js":
+/*!************************************!*\
+  !*** ./node_modules/nets/index.js ***!
+  \************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(process, Buffer) {var req = __webpack_require__(29)
+/* WEBPACK VAR INJECTION */(function(process, Buffer) {var req = __webpack_require__(/*! request */ "./node_modules/xhr/index.js")
 
 module.exports = Nets
 
@@ -6230,14 +5349,19 @@ function Nets (opts, cb) {
   return req(opts, cb)
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(8), __webpack_require__(6).Buffer))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../process/browser.js */ "./node_modules/process/browser.js"), __webpack_require__(/*! ./../buffer/index.js */ "./node_modules/buffer/index.js").Buffer))
 
 /***/ }),
-/* 23 */
+
+/***/ "./node_modules/parse-headers/parse-headers.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/parse-headers/parse-headers.js ***!
+  \*****************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-var trim = __webpack_require__(27)
-  , forEach = __webpack_require__(16)
+var trim = __webpack_require__(/*! trim */ "./node_modules/trim/index.js")
+  , forEach = __webpack_require__(/*! for-each */ "./node_modules/for-each/index.js")
   , isArray = function(arg) {
       return Object.prototype.toString.call(arg) === '[object Array]';
     }
@@ -6269,13 +5393,213 @@ module.exports = function (headers) {
 }
 
 /***/ }),
-/* 24 */
+
+/***/ "./node_modules/process/browser.js":
+/*!*****************************************!*\
+  !*** ./node_modules/process/browser.js ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+// shim for using process in browser
+var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+
+/***/ }),
+
+/***/ "./node_modules/text-encoding/index.js":
+/*!*********************************************!*\
+  !*** ./node_modules/text-encoding/index.js ***!
+  \*********************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 // This is free and unencumbered software released into the public domain.
 // See LICENSE.md for more information.
 
-var encoding = __webpack_require__(26);
+var encoding = __webpack_require__(/*! ./lib/encoding.js */ "./node_modules/text-encoding/lib/encoding.js");
 
 module.exports = {
   TextEncoder: encoding.TextEncoder,
@@ -6284,7 +5608,12 @@ module.exports = {
 
 
 /***/ }),
-/* 25 */
+
+/***/ "./node_modules/text-encoding/lib/encoding-indexes.js":
+/*!************************************************************!*\
+  !*** ./node_modules/text-encoding/lib/encoding-indexes.js ***!
+  \************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports) {
 
 (function(global) {
@@ -6336,7 +5665,12 @@ module.exports = {
 }(this || {}));
 
 /***/ }),
-/* 26 */
+
+/***/ "./node_modules/text-encoding/lib/encoding.js":
+/*!****************************************************!*\
+  !*** ./node_modules/text-encoding/lib/encoding.js ***!
+  \****************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 // This is free and unencumbered software released into the public domain.
@@ -6353,7 +5687,7 @@ module.exports = {
   if (typeof module !== "undefined" && module.exports &&
     !global["encoding-indexes"]) {
     global["encoding-indexes"] =
-      __webpack_require__(25)["encoding-indexes"];
+      __webpack_require__(/*! ./encoding-indexes.js */ "./node_modules/text-encoding/lib/encoding-indexes.js")["encoding-indexes"];
   }
 
   //
@@ -9654,7 +8988,12 @@ module.exports = {
 }(this || {}));
 
 /***/ }),
-/* 27 */
+
+/***/ "./node_modules/trim/index.js":
+/*!************************************!*\
+  !*** ./node_modules/trim/index.js ***!
+  \************************************/
+/*! no static exports found */
 /***/ (function(module, exports) {
 
 
@@ -9674,24 +9013,65 @@ exports.right = function(str){
 
 
 /***/ }),
-/* 28 */
+
+/***/ "./node_modules/webpack/buildin/amd-options.js":
+/*!****************************************!*\
+  !*** (webpack)/buildin/amd-options.js ***!
+  \****************************************/
+/*! no static exports found */
 /***/ (function(module, exports) {
 
 /* WEBPACK VAR INJECTION */(function(__webpack_amd_options__) {/* globals __webpack_amd_options__ */
 module.exports = __webpack_amd_options__;
 
-/* WEBPACK VAR INJECTION */}.call(exports, {}))
+/* WEBPACK VAR INJECTION */}.call(this, {}))
 
 /***/ }),
-/* 29 */
+
+/***/ "./node_modules/webpack/buildin/global.js":
+/*!***********************************!*\
+  !*** (webpack)/buildin/global.js ***!
+  \***********************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var g;
+
+// This works in non-strict mode
+g = (function() {
+	return this;
+})();
+
+try {
+	// This works if eval is allowed (see CSP)
+	g = g || Function("return this")() || (1, eval)("this");
+} catch (e) {
+	// This works if the window reference is available
+	if (typeof window === "object") g = window;
+}
+
+// g can still be undefined, but nothing to do about it...
+// We return undefined, instead of nothing here, so it's
+// easier to handle this case. if(!global) { ...}
+
+module.exports = g;
+
+
+/***/ }),
+
+/***/ "./node_modules/xhr/index.js":
+/*!***********************************!*\
+  !*** ./node_modules/xhr/index.js ***!
+  \***********************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var window = __webpack_require__(17)
-var isFunction = __webpack_require__(7)
-var parseHeaders = __webpack_require__(23)
-var xtend = __webpack_require__(30)
+var window = __webpack_require__(/*! global/window */ "./node_modules/global/window.js")
+var isFunction = __webpack_require__(/*! is-function */ "./node_modules/is-function/index.js")
+var parseHeaders = __webpack_require__(/*! parse-headers */ "./node_modules/parse-headers/parse-headers.js")
+var xtend = __webpack_require__(/*! xtend */ "./node_modules/xtend/immutable.js")
 
 module.exports = createXHR
 createXHR.XMLHttpRequest = window.XMLHttpRequest || noop
@@ -9931,7 +9311,12 @@ function noop() {}
 
 
 /***/ }),
-/* 30 */
+
+/***/ "./node_modules/xtend/immutable.js":
+/*!*****************************************!*\
+  !*** ./node_modules/xtend/immutable.js ***!
+  \*****************************************/
+/*! no static exports found */
 /***/ (function(module, exports) {
 
 module.exports = extend
@@ -9956,13 +9341,869 @@ function extend() {
 
 
 /***/ }),
-/* 31 */
+
+/***/ "./src/Asset.js":
+/*!**********************!*\
+  !*** ./src/Asset.js ***!
+  \**********************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var ScratchStorage = __webpack_require__(9);
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var TextDecoder = __webpack_require__(/*! text-encoding */ "./node_modules/text-encoding/index.js").TextDecoder;
+var TextEncoder = __webpack_require__(/*! text-encoding */ "./node_modules/text-encoding/index.js").TextEncoder;
+var base64js = __webpack_require__(/*! base64-js */ "./node_modules/base64-js/index.js");
+
+var memoizedToString = function () {
+    var strings = {};
+    return function (assetId, data) {
+        if (!strings.hasOwnProperty(assetId)) {
+            strings[assetId] = base64js.fromByteArray(data);
+        }
+        return strings[assetId];
+    };
+}();
+
+var Asset = function () {
+    /**
+     * Construct an Asset.
+     * @param {AssetType} assetType - The type of this asset (sound, image, etc.)
+     * @param {string} assetId - The ID of this asset.
+     * @param {DataFormat} [dataFormat] - The format of the data (WAV, PNG, etc.); required iff `data` is present.
+     * @param {Buffer} [data] - The in-memory data for this asset; optional.
+     */
+    function Asset(assetType, assetId, dataFormat, data) {
+        _classCallCheck(this, Asset);
+
+        /** @type {AssetType} */
+        this.assetType = assetType;
+
+        /** @type {string} */
+        this.assetId = assetId;
+
+        this.setData(data, dataFormat || assetType.runtimeFormat);
+
+        /** @type {Asset[]} */
+        this.dependencies = [];
+    }
+
+    _createClass(Asset, [{
+        key: 'setData',
+        value: function setData(data, dataFormat) {
+            if (data && !dataFormat) {
+                throw new Error('Data provided without specifying its format');
+            }
+
+            /** @type {DataFormat} */
+            this.dataFormat = dataFormat;
+
+            /** @type {Buffer} */
+            this.data = data;
+        }
+
+        /**
+         * @returns {string} - This asset's data, decoded as text.
+         */
+
+    }, {
+        key: 'decodeText',
+        value: function decodeText() {
+            var decoder = new TextDecoder();
+            return decoder.decode(this.data);
+        }
+
+        /**
+         * Same as `setData` but encodes text first.
+         * @param {string} data - the text data to encode and store.
+         * @param {DataFormat} dataFormat - the format of the data (DataFormat.SVG for example).
+         */
+
+    }, {
+        key: 'encodeTextData',
+        value: function encodeTextData(data, dataFormat) {
+            var encoder = new TextEncoder();
+            this.setData(encoder.encode(data), dataFormat);
+        }
+
+        /**
+         * @param {string} [contentType] - Optionally override the content type to be included in the data URI.
+         * @returns {string} - A data URI representing the asset's data.
+         */
+
+    }, {
+        key: 'encodeDataURI',
+        value: function encodeDataURI(contentType) {
+            contentType = contentType || this.assetType.contentType;
+            return 'data:' + contentType + ';base64,' + memoizedToString(this.assetId, this.data);
+        }
+    }]);
+
+    return Asset;
+}();
+
+module.exports = Asset;
+
+/***/ }),
+
+/***/ "./src/AssetType.js":
+/*!**************************!*\
+  !*** ./src/AssetType.js ***!
+  \**************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var DataFormat = __webpack_require__(/*! ./DataFormat */ "./src/DataFormat.js");
+
+/**
+ * Enumeration of the supported asset types.
+ * @type {Object.<String,AssetType>}
+ * @typedef {Object} AssetType - Information about a supported asset type.
+ * @property {string} contentType - the MIME type associated with this kind of data. Useful for data URIs, etc.
+ * @property {string} name - The human-readable name of this asset type.
+ * @property {DataFormat} runtimeFormat - The default format used for runtime, in-memory storage of this asset. For
+ *     example, a project stored in SB2 format on disk will be returned as JSON when loaded into memory.
+ * @property {boolean} immutable - Indicates if the asset id is determined by the asset content.
+ */
+var AssetType = {
+    ImageBitmap: {
+        contentType: 'image/png',
+        name: 'ImageBitmap',
+        runtimeFormat: DataFormat.PNG,
+        immutable: true
+    },
+    ImageVector: {
+        contentType: 'image/svg+xml',
+        name: 'ImageVector',
+        runtimeFormat: DataFormat.SVG,
+        immutable: true
+    },
+    Project: {
+        contentType: 'application/json',
+        name: 'Project',
+        runtimeFormat: DataFormat.JSON,
+        immutable: false
+    },
+    Sound: {
+        contentType: 'audio/x-wav',
+        name: 'Sound',
+        runtimeFormat: DataFormat.WAV,
+        immutable: true
+    },
+    Sprite: {
+        contentType: 'application/json',
+        name: 'Sprite',
+        runtimeFormat: DataFormat.JSON,
+        immutable: true
+    }
+};
+
+module.exports = AssetType;
+
+/***/ }),
+
+/***/ "./src/BuiltinHelper.js":
+/*!******************************!*\
+  !*** ./src/BuiltinHelper.js ***!
+  \******************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(Buffer) {
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var md5 = __webpack_require__(/*! js-md5 */ "./node_modules/js-md5/src/md5.js");
+
+var Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
+var AssetType = __webpack_require__(/*! ./AssetType */ "./src/AssetType.js");
+var DataFormat = __webpack_require__(/*! ./DataFormat */ "./src/DataFormat.js");
+var Helper = __webpack_require__(/*! ./Helper */ "./src/Helper.js");
+
+/**
+ * @typedef {object} BuiltinAssetRecord
+ * @property {AssetType} type - The type of the asset.
+ * @property {DataFormat} format - The format of the asset's data.
+ * @property {?string} id - The asset's unique ID.
+ * @property {Buffer} data - The asset's data.
+ */
+
+/**
+ * @type {BuiltinAssetRecord[]}
+ */
+var DefaultAssets = [{
+    type: AssetType.ImageBitmap,
+    format: DataFormat.PNG,
+    id: null,
+    data: new Buffer(__webpack_require__(/*! arraybuffer-loader!./builtins/defaultBitmap.png */ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultBitmap.png") // eslint-disable-line global-require
+    )
+}, {
+    type: AssetType.Sound,
+    format: DataFormat.WAV,
+    id: null,
+    data: new Buffer(__webpack_require__(/*! arraybuffer-loader!./builtins/defaultSound.wav */ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultSound.wav") // eslint-disable-line global-require
+    )
+}, {
+    type: AssetType.ImageVector,
+    format: DataFormat.SVG,
+    id: null,
+    data: new Buffer(__webpack_require__(/*! arraybuffer-loader!./builtins/defaultVector.svg */ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultVector.svg") // eslint-disable-line global-require
+    )
+}];
+
+/**
+ * @type {BuiltinAssetRecord[]}
+ */
+var BuiltinAssets = DefaultAssets.concat([]);
+
+var BuiltinHelper = function (_Helper) {
+    _inherits(BuiltinHelper, _Helper);
+
+    function BuiltinHelper(parent) {
+        _classCallCheck(this, BuiltinHelper);
+
+        /**
+         * In-memory storage for all built-in assets.
+         * @type {Object.<AssetType, AssetIdMap>} Maps asset type to a map of asset ID to actual assets.
+         * @typedef {Object.<string, BuiltinAssetRecord>} AssetIdMap - Maps asset ID to asset.
+         */
+        var _this = _possibleConstructorReturn(this, (BuiltinHelper.__proto__ || Object.getPrototypeOf(BuiltinHelper)).call(this, parent));
+
+        _this.assets = {};
+
+        BuiltinAssets.forEach(function (assetRecord) {
+            assetRecord.id = _this.cache(assetRecord.type, assetRecord.format, assetRecord.data, assetRecord.id);
+        });
+        return _this;
+    }
+
+    /**
+     * Call `setDefaultAssetId` on the parent `ScratchStorage` instance to register all built-in default assets.
+     */
+
+
+    _createClass(BuiltinHelper, [{
+        key: 'registerDefaultAssets',
+        value: function registerDefaultAssets() {
+            var numAssets = DefaultAssets.length;
+            for (var assetIndex = 0; assetIndex < numAssets; ++assetIndex) {
+                var assetRecord = DefaultAssets[assetIndex];
+                this.parent.setDefaultAssetId(assetRecord.type, assetRecord.id);
+            }
+        }
+
+        /**
+         * Synchronously fetch a cached asset for a given asset id. Returns null if not found.
+         * @param {string} assetId - The id for the asset to fetch.
+         * @returns {?Asset} The asset for assetId, if it exists.
+         */
+
+    }, {
+        key: 'get',
+        value: function get(assetId) {
+            var asset = null;
+            if (this.assets.hasOwnProperty(assetId)) {
+                /** @type{BuiltinAssetRecord} */
+                var assetRecord = this.assets[assetId];
+                asset = new Asset(assetRecord.type, assetRecord.id, assetRecord.format, assetRecord.data);
+            }
+            return asset;
+        }
+
+        /**
+         * Cache an asset for future lookups by ID.
+         * @param {AssetType} assetType - The type of the asset to cache.
+         * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
+         * @param {Buffer} data - The data for the cached asset.
+         * @param {string} id - The id for the cached asset.
+         * @returns {string} The calculated id of the cached asset, or the supplied id if the asset is mutable.
+         */
+
+    }, {
+        key: 'cache',
+        value: function cache(assetType, dataFormat, data, id) {
+            if (!dataFormat) throw new Error('Data cached without specifying its format');
+            if (id) {
+                if (this.assets.hasOwnProperty(id) && assetType.immutable) return id;
+            } else if (assetType.immutable) {
+                id = md5(data);
+            }
+            this.assets[id] = {
+                type: assetType,
+                format: dataFormat,
+                id: id,
+                data: data
+            };
+            return id;
+        }
+
+        /**
+         * Fetch an asset but don't process dependencies.
+         * @param {AssetType} assetType - The type of asset to fetch.
+         * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+         * @return {Promise.<Asset>} A promise for the contents of the asset.
+         */
+
+    }, {
+        key: 'load',
+        value: function load(assetType, assetId) {
+            return Promise.resolve(this.get(assetId));
+        }
+    }]);
+
+    return BuiltinHelper;
+}(Helper);
+
+module.exports = BuiltinHelper;
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../node_modules/buffer/index.js */ "./node_modules/buffer/index.js").Buffer))
+
+/***/ }),
+
+/***/ "./src/DataFormat.js":
+/*!***************************!*\
+  !*** ./src/DataFormat.js ***!
+  \***************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+/**
+ * Enumeration of the supported data formats.
+ * @enum {string}
+ */
+var DataFormat = {
+    JPG: 'jpg',
+    JSON: 'json',
+    MP3: 'mp3',
+    PNG: 'png',
+    SB2: 'sb2',
+    SVG: 'svg',
+    WAV: 'wav'
+};
+
+module.exports = DataFormat;
+
+/***/ }),
+
+/***/ "./src/Helper.js":
+/*!***********************!*\
+  !*** ./src/Helper.js ***!
+  \***********************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/**
+ * Base class for asset load/save helpers.
+ * @abstract
+ */
+var Helper = function () {
+    function Helper(parent) {
+        _classCallCheck(this, Helper);
+
+        this.parent = parent;
+    }
+
+    /**
+     * Fetch an asset but don't process dependencies.
+     * @param {AssetType} assetType - The type of asset to fetch.
+     * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+     * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
+     * @return {Promise.<Asset>} A promise for the contents of the asset.
+     */
+
+
+    _createClass(Helper, [{
+        key: "load",
+        value: function load(assetType, assetId, dataFormat) {
+            return Promise.reject(new Error("No asset of type " + assetType + " for ID " + assetId + " with format " + dataFormat));
+        }
+    }]);
+
+    return Helper;
+}();
+
+module.exports = Helper;
+
+/***/ }),
+
+/***/ "./src/LocalHelper.js":
+/*!****************************!*\
+  !*** ./src/LocalHelper.js ***!
+  \****************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var localforage = __webpack_require__(/*! localforage */ "./node_modules/localforage/dist/localforage.js");
+
+var Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
+var Helper = __webpack_require__(/*! ./Helper */ "./src/Helper.js");
+
+/**
+ * Implements storage on the local device, available even when the device has no network connection.
+ */
+
+var LocalHelper = function (_Helper) {
+    _inherits(LocalHelper, _Helper);
+
+    function LocalHelper(parent) {
+        _classCallCheck(this, LocalHelper);
+
+        var _this = _possibleConstructorReturn(this, (LocalHelper.__proto__ || Object.getPrototypeOf(LocalHelper)).call(this, parent));
+
+        localforage.config({
+            name: 'Scratch 3.0',
+            size: 100 * 1024 * 1024
+        });
+        return _this;
+    }
+
+    /**
+     * Fetch an asset but don't process dependencies.
+     * @param {AssetType} assetType - The type of asset to fetch.
+     * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+     * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
+     * @return {Promise.<Asset>} A promise for the contents of the asset.
+     */
+
+
+    _createClass(LocalHelper, [{
+        key: 'load',
+        value: function load(assetType, assetId, dataFormat) {
+            return new Promise(function (fulfill, reject) {
+                var fileName = [assetId, dataFormat].join('.');
+                localforage.getItem(fileName).then(function (data) {
+                    if (data === null) {
+                        fulfill(null);
+                    } else {
+                        fulfill(new Asset(assetType, assetId, dataFormat, data));
+                    }
+                }, function (error) {
+                    reject(error);
+                });
+            });
+        }
+    }]);
+
+    return LocalHelper;
+}(Helper);
+
+module.exports = LocalHelper;
+
+/***/ }),
+
+/***/ "./src/ScratchStorage.js":
+/*!*******************************!*\
+  !*** ./src/ScratchStorage.js ***!
+  \*******************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var BuiltinHelper = __webpack_require__(/*! ./BuiltinHelper */ "./src/BuiltinHelper.js");
+var LocalHelper = __webpack_require__(/*! ./LocalHelper */ "./src/LocalHelper.js");
+var WebHelper = __webpack_require__(/*! ./WebHelper */ "./src/WebHelper.js");
+
+var _Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
+var _AssetType = __webpack_require__(/*! ./AssetType */ "./src/AssetType.js");
+var _DataFormat = __webpack_require__(/*! ./DataFormat */ "./src/DataFormat.js");
+
+var ScratchStorage = function () {
+    function ScratchStorage() {
+        _classCallCheck(this, ScratchStorage);
+
+        this.defaultAssetId = {};
+
+        this.builtinHelper = new BuiltinHelper(this);
+        this.webHelper = new WebHelper(this);
+        this.localHelper = new LocalHelper(this);
+
+        this.builtinHelper.registerDefaultAssets(this);
+    }
+
+    /**
+     * @return {Asset} - the `Asset` class constructor.
+     * @constructor
+     */
+
+
+    _createClass(ScratchStorage, [{
+        key: 'get',
+
+
+        /**
+         * Synchronously fetch a cached asset from built-in storage. Assets are cached when they are loaded.
+         * @param {string} assetId - The id of the asset to fetch.
+         * @returns {?Asset} The asset, if it exists.
+         */
+        value: function get(assetId) {
+            return this.builtinHelper.get(assetId);
+        }
+
+        /**
+         * Cache an asset for future lookups by ID.
+         * @param {AssetType} assetType - The type of the asset to cache.
+         * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
+         * @param {Buffer} data - The data for the cached asset.
+         * @param {string} id - The id for the cached asset.
+         * @returns {string} The calculated id of the cached asset, or the supplied id if the asset is mutable.
+         */
+
+    }, {
+        key: 'cache',
+        value: function cache(assetType, dataFormat, data, id) {
+            return this.builtinHelper.cache(assetType, dataFormat, data, id);
+        }
+
+        /**
+         * Register a web-based source for assets. Sources will be checked in order of registration.
+         * @param {Array.<AssetType>} types - The types of asset provided by this source.
+         * @param {UrlFunction} urlFunction - A function which computes a URL from an Asset.
+         */
+
+    }, {
+        key: 'addWebSource',
+        value: function addWebSource(types, urlFunction) {
+            this.webHelper.addSource(types, urlFunction);
+        }
+
+        /**
+         * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
+         * @param {AssetType} type - Get the default ID for assets of this type.
+         * @return {?string} The ID of the default asset of the given type, if any.
+         */
+
+    }, {
+        key: 'getDefaultAssetId',
+        value: function getDefaultAssetId(type) {
+            if (this.defaultAssetId.hasOwnProperty(type.name)) {
+                return this.defaultAssetId[type.name];
+            }
+        }
+
+        /**
+         * Set the default ID for a particular type of asset. This default asset will be used if a requested asset cannot
+         * be found and automatic fallback is enabled. Ideally this should be an asset that is available locally or even
+         * one built into this module.
+         * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
+         * @param {AssetType} type - The type of asset for which the default will be set.
+         * @param {string} id - The default ID to use for this type of asset.
+         */
+
+    }, {
+        key: 'setDefaultAssetId',
+        value: function setDefaultAssetId(type, id) {
+            this.defaultAssetId[type.name] = id;
+        }
+
+        /**
+         * Fetch an asset by type & ID.
+         * @param {AssetType} assetType - The type of asset to fetch. This also determines which asset store to use.
+         * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+         * @param {DataFormat} [dataFormat] - Optional: load this format instead of the AssetType's default.
+         * @return {Promise.<Asset>} A promise for the requested Asset.
+         *   If the promise is fulfilled with non-null, the value is the requested asset or a fallback.
+         *   If the promise is fulfilled with null, the desired asset could not be found with the current asset sources.
+         *   If the promise is rejected, there was an error on at least one asset source. HTTP 404 does not count as an
+         *   error here, but (for example) HTTP 403 does.
+         */
+
+    }, {
+        key: 'load',
+        value: function load(assetType, assetId, dataFormat) {
+            var _this = this;
+
+            /** @type {Helper[]} */
+            var helpers = [this.builtinHelper, this.localHelper, this.webHelper];
+            var errors = [];
+            var helperIndex = 0;
+            dataFormat = dataFormat || assetType.runtimeFormat;
+
+            return new Promise(function (fulfill, reject) {
+                var tryNextHelper = function tryNextHelper() {
+                    if (helperIndex < helpers.length) {
+                        var helper = helpers[helperIndex++];
+                        helper.load(assetType, assetId, dataFormat).then(function (asset) {
+                            if (asset === null) {
+                                tryNextHelper();
+                            } else {
+                                // TODO? this.localHelper.cache(assetType, assetId, asset);
+                                if (helper !== _this.builtinHelper && assetType.immutable) {
+                                    asset.assetId = _this.builtinHelper.cache(assetType, asset.dataFormat, asset.data, assetId);
+                                }
+                                // Note that other attempts may have caused errors, effectively suppressed here.
+                                fulfill(asset);
+                            }
+                        }, function (error) {
+                            errors.push(error);
+                            // TODO: maybe some types of error should prevent trying the next helper?
+                            tryNextHelper();
+                        });
+                    } else if (errors.length === 0) {
+                        // Nothing went wrong but we couldn't find the asset.
+                        fulfill(null);
+                    } else {
+                        // At least one thing went wrong and also we couldn't find the asset.
+                        reject(errors);
+                    }
+                };
+
+                tryNextHelper();
+            });
+        }
+    }, {
+        key: 'Asset',
+        get: function get() {
+            return _Asset;
+        }
+
+        /**
+         * @return {AssetType} - the list of supported asset types.
+         * @constructor
+         */
+
+    }, {
+        key: 'AssetType',
+        get: function get() {
+            return _AssetType;
+        }
+
+        /**
+         * @return {DataFormat} - the list of supported data formats.
+         * @constructor
+         */
+
+    }, {
+        key: 'DataFormat',
+        get: function get() {
+            return _DataFormat;
+        }
+
+        /**
+         * @deprecated Please use the `Asset` member of a storage instance instead.
+         * @return {Asset} - the `Asset` class constructor.
+         * @constructor
+         */
+
+    }], [{
+        key: 'Asset',
+        get: function get() {
+            return _Asset;
+        }
+
+        /**
+         * @deprecated Please use the `AssetType` member of a storage instance instead.
+         * @return {AssetType} - the list of supported asset types.
+         * @constructor
+         */
+
+    }, {
+        key: 'AssetType',
+        get: function get() {
+            return _AssetType;
+        }
+    }]);
+
+    return ScratchStorage;
+}();
+
+module.exports = ScratchStorage;
+
+/***/ }),
+
+/***/ "./src/WebHelper.js":
+/*!**************************!*\
+  !*** ./src/WebHelper.js ***!
+  \**************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(Buffer) {
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var nets = __webpack_require__(/*! nets */ "./node_modules/nets/index.js");
+
+var Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
+var Helper = __webpack_require__(/*! ./Helper */ "./src/Helper.js");
+
+/**
+ * @typedef {function} UrlFunction - A function which computes a URL from asset information.
+ * @param {Asset} - The asset for which the URL should be computed.
+ * @returns {string} - The URL for the asset.
+ */
+
+var WebHelper = function (_Helper) {
+    _inherits(WebHelper, _Helper);
+
+    function WebHelper(parent) {
+        _classCallCheck(this, WebHelper);
+
+        /**
+         * @type {Array.<SourceRecord>}
+         * @typedef {object} SourceRecord
+         * @property {Array.<string>} types - The types of asset provided by this source, from AssetType's name field.
+         * @property {UrlFunction} urlFunction - A function which computes a URL from an Asset.
+         */
+        var _this = _possibleConstructorReturn(this, (WebHelper.__proto__ || Object.getPrototypeOf(WebHelper)).call(this, parent));
+
+        _this.sources = [];
+        return _this;
+    }
+
+    /**
+     * Register a web-based source for assets. Sources will be checked in order of registration.
+     * @param {Array.<AssetType>} types - The types of asset provided by this source.
+     * @param {UrlFunction} urlFunction - A function which computes a URL from an Asset.
+     */
+
+
+    _createClass(WebHelper, [{
+        key: 'addSource',
+        value: function addSource(types, urlFunction) {
+            this.sources.push({
+                types: types.map(function (assetType) {
+                    return assetType.name;
+                }),
+                urlFunction: urlFunction
+            });
+        }
+
+        /**
+         * Fetch an asset but don't process dependencies.
+         * @param {AssetType} assetType - The type of asset to fetch.
+         * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+         * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
+         * @return {Promise.<Asset>} A promise for the contents of the asset.
+         */
+
+    }, {
+        key: 'load',
+        value: function load(assetType, assetId, dataFormat) {
+
+            /** @type {Array.<{url:string, result:*}>} List of URLs attempted & errors encountered. */
+            var errors = [];
+            var sources = this.sources.slice();
+            var asset = new Asset(assetType, assetId, dataFormat);
+            var sourceIndex = 0;
+
+            return new Promise(function (fulfill, reject) {
+
+                var tryNextSource = function tryNextSource() {
+
+                    /** @type {UrlFunction} */
+                    var urlFunction = void 0;
+
+                    while (sourceIndex < sources.length) {
+                        var source = sources[sourceIndex];
+                        ++sourceIndex;
+                        if (source.types.indexOf(assetType.name) >= 0) {
+                            urlFunction = source.urlFunction;
+                            break;
+                        }
+                    }
+
+                    if (urlFunction) {
+                        var url = urlFunction(asset);
+                        if (url === false) {
+                            tryNextSource();
+                            return;
+                        }
+
+                        nets({ url: url }, function (err, resp, body) {
+                            // body is a Buffer
+                            if (err || Math.floor(resp.statusCode / 100) !== 2) {
+                                // 兼容处理: file:// 协议下 ajax 请求，通过走 rawRequest, status code 为 0
+                                if (resp.statusCode === 0 && resp.rawRequest && resp.rawRequest.readyState === 4) {
+                                    var body2 = new Buffer(new Uint8Array(resp.rawRequest.response));
+                                    asset.setData(body2, dataFormat);
+                                    fulfill(asset);
+                                } else {
+                                    tryNextSource();
+                                }
+                            } else {
+                                asset.setData(body, dataFormat);
+                                fulfill(asset);
+                            }
+                        });
+                    } else if (errors.length > 0) {
+                        reject(errors);
+                    } else {
+                        fulfill(null); // no sources matching asset
+                    }
+                };
+
+                tryNextSource();
+            });
+        }
+    }]);
+
+    return WebHelper;
+}(Helper);
+
+module.exports = WebHelper;
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../node_modules/buffer/index.js */ "./node_modules/buffer/index.js").Buffer))
+
+/***/ }),
+
+/***/ "./src/index.js":
+/*!**********************!*\
+  !*** ./src/index.js ***!
+  \**********************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var ScratchStorage = __webpack_require__(/*! ./ScratchStorage */ "./src/ScratchStorage.js");
 
 /**
  * Export for use with NPM & Node.js.
@@ -9971,6 +10212,7 @@ var ScratchStorage = __webpack_require__(9);
 module.exports = ScratchStorage;
 
 /***/ })
-/******/ ]);
+
+/******/ });
 });
 //# sourceMappingURL=scratch-storage.js.map
