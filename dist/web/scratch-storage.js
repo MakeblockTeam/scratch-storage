@@ -10162,9 +10162,13 @@ var WebHelper = function (_Helper) {
                             if (err || Math.floor(resp.statusCode / 100) !== 2) {
                                 // 兼容处理: file:// 协议下 ajax 请求，通过走 rawRequest, status code 为 0
                                 if (resp.statusCode === 0 && resp.rawRequest && resp.rawRequest.readyState === 4) {
-                                    var body2 = new Buffer(new Uint8Array(resp.rawRequest.response));
-                                    asset.setData(body2, dataFormat);
-                                    fulfill(asset);
+                                    if (resp.rawRequest.response) {
+                                        var body2 = new Buffer(new Uint8Array(resp.rawRequest.response));
+                                        asset.setData(body2, dataFormat);
+                                        fulfill(asset);
+                                    } else {
+                                        fulfill(null); // no sources matching asset
+                                    }
                                 } else {
                                     tryNextSource();
                                 }
