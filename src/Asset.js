@@ -1,6 +1,19 @@
-const TextDecoder = require('text-encoding').TextDecoder;
-const TextEncoder = require('text-encoding').TextEncoder;
+// Use JS implemented TextDecoder and TextEncoder if it is not provided by the
+// browser.
+let _TextDecoder;
+let _TextEncoder;
+const encoding = require('text-encoding');
+if (typeof TextDecoder === 'undefined' || typeof TextEncoder === 'undefined') {
+    _TextDecoder = encoding.TextDecoder;
+    _TextEncoder = encoding.TextEncoder;
+} else {
+    /* global TextDecoder TextEncoder */
+    _TextDecoder = TextDecoder;
+    _TextEncoder = TextEncoder;
+}
+
 const base64js = require('base64-js');
+const md5 = require('js-md5');
 
 const memoizedToString = (function () {
     const strings = {};
@@ -19,21 +32,22 @@ class Asset {
      * @param {string} assetId - The ID of this asset.
      * @param {DataFormat} [dataFormat] - The format of the data (WAV, PNG, etc.); required iff `data` is present.
      * @param {Buffer} [data] - The in-memory data for this asset; optional.
+     * @param {bool} [generateId] - Whether to create id from an md5 hash of data
      */
-    constructor (assetType, assetId, dataFormat, data) {
+    constructor (assetType, assetId, dataFormat, data, generateId) {
         /** @type {AssetType} */
         this.assetType = assetType;
 
         /** @type {string} */
         this.assetId = assetId;
 
-        this.setData(data, dataFormat || assetType.runtimeFormat);
+        this.setData(data, dataFormat || assetType.runtimeFormat, generateId);
 
         /** @type {Asset[]} */
         this.dependencies = [];
     }
 
-    setData (data, dataFormat) {
+    setData (data, dataFormat, generateId) {
         if (data && !dataFormat) {
             throw new Error('Data provided without specifying its format');
         }
@@ -43,13 +57,15 @@ class Asset {
 
         /** @type {Buffer} */
         this.data = data;
+
+        if (generateId) this.assetId = md5(data);
     }
 
     /**
      * @returns {string} - This asset's data, decoded as text.
      */
     decodeText () {
-        const decoder = new TextDecoder();
+        const decoder = new _TextDecoder();
         return decoder.decode(this.data);
     }
 
@@ -57,10 +73,11 @@ class Asset {
      * Same as `setData` but encodes text first.
      * @param {string} data - the text data to encode and store.
      * @param {DataFormat} dataFormat - the format of the data (DataFormat.SVG for example).
+     * @param {bool} generateId - after setting data, set the id to an md5 of the data?
      */
-    encodeTextData (data, dataFormat) {
-        const encoder = new TextEncoder();
-        this.setData(encoder.encode(data), dataFormat);
+    encodeTextData (data, dataFormat, generateId) {
+        const encoder = new _TextEncoder();
+        this.setData(encoder.encode(data), dataFormat, generateId);
     }
 
     /**
