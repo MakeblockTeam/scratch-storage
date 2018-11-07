@@ -179,68 +179,102 @@ for (var i = 0, len = code.length; i < len; ++i) {
   revLookup[code.charCodeAt(i)] = i
 }
 
+// Support decoding URL-safe base64 strings, as Node.js does.
+// See: https://en.wikipedia.org/wiki/Base64#URL_applications
 revLookup['-'.charCodeAt(0)] = 62
 revLookup['_'.charCodeAt(0)] = 63
 
-function placeHoldersCount (b64) {
+function getLens (b64) {
   var len = b64.length
+
   if (len % 4 > 0) {
     throw new Error('Invalid string. Length must be a multiple of 4')
   }
 
-  // the number of equal signs (place holders)
-  // if there are two placeholders, than the two characters before it
-  // represent one byte
-  // if there is only one, then the three characters before it represent 2 bytes
-  // this is just a cheap hack to not do indexOf twice
-  return b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
+  // Trim off extra bytes after placeholder bytes are found
+  // See: https://github.com/beatgammit/base64-js/issues/42
+  var validLen = b64.indexOf('=')
+  if (validLen === -1) validLen = len
+
+  var placeHoldersLen = validLen === len
+    ? 0
+    : 4 - (validLen % 4)
+
+  return [validLen, placeHoldersLen]
 }
 
+// base64 is 4/3 + up to two characters of the original data
 function byteLength (b64) {
-  // base64 is 4/3 + up to two characters of the original data
-  return (b64.length * 3 / 4) - placeHoldersCount(b64)
+  var lens = getLens(b64)
+  var validLen = lens[0]
+  var placeHoldersLen = lens[1]
+  return ((validLen + placeHoldersLen) * 3 / 4) - placeHoldersLen
+}
+
+function _byteLength (b64, validLen, placeHoldersLen) {
+  return ((validLen + placeHoldersLen) * 3 / 4) - placeHoldersLen
 }
 
 function toByteArray (b64) {
-  var i, l, tmp, placeHolders, arr
-  var len = b64.length
-  placeHolders = placeHoldersCount(b64)
+  var tmp
+  var lens = getLens(b64)
+  var validLen = lens[0]
+  var placeHoldersLen = lens[1]
 
-  arr = new Arr((len * 3 / 4) - placeHolders)
+  var arr = new Arr(_byteLength(b64, validLen, placeHoldersLen))
+
+  var curByte = 0
 
   // if there are placeholders, only get up to the last complete 4 chars
-  l = placeHolders > 0 ? len - 4 : len
+  var len = placeHoldersLen > 0
+    ? validLen - 4
+    : validLen
 
-  var L = 0
-
-  for (i = 0; i < l; i += 4) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 18) | (revLookup[b64.charCodeAt(i + 1)] << 12) | (revLookup[b64.charCodeAt(i + 2)] << 6) | revLookup[b64.charCodeAt(i + 3)]
-    arr[L++] = (tmp >> 16) & 0xFF
-    arr[L++] = (tmp >> 8) & 0xFF
-    arr[L++] = tmp & 0xFF
+  for (var i = 0; i < len; i += 4) {
+    tmp =
+      (revLookup[b64.charCodeAt(i)] << 18) |
+      (revLookup[b64.charCodeAt(i + 1)] << 12) |
+      (revLookup[b64.charCodeAt(i + 2)] << 6) |
+      revLookup[b64.charCodeAt(i + 3)]
+    arr[curByte++] = (tmp >> 16) & 0xFF
+    arr[curByte++] = (tmp >> 8) & 0xFF
+    arr[curByte++] = tmp & 0xFF
   }
 
-  if (placeHolders === 2) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 2) | (revLookup[b64.charCodeAt(i + 1)] >> 4)
-    arr[L++] = tmp & 0xFF
-  } else if (placeHolders === 1) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 10) | (revLookup[b64.charCodeAt(i + 1)] << 4) | (revLookup[b64.charCodeAt(i + 2)] >> 2)
-    arr[L++] = (tmp >> 8) & 0xFF
-    arr[L++] = tmp & 0xFF
+  if (placeHoldersLen === 2) {
+    tmp =
+      (revLookup[b64.charCodeAt(i)] << 2) |
+      (revLookup[b64.charCodeAt(i + 1)] >> 4)
+    arr[curByte++] = tmp & 0xFF
+  }
+
+  if (placeHoldersLen === 1) {
+    tmp =
+      (revLookup[b64.charCodeAt(i)] << 10) |
+      (revLookup[b64.charCodeAt(i + 1)] << 4) |
+      (revLookup[b64.charCodeAt(i + 2)] >> 2)
+    arr[curByte++] = (tmp >> 8) & 0xFF
+    arr[curByte++] = tmp & 0xFF
   }
 
   return arr
 }
 
 function tripletToBase64 (num) {
-  return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F]
+  return lookup[num >> 18 & 0x3F] +
+    lookup[num >> 12 & 0x3F] +
+    lookup[num >> 6 & 0x3F] +
+    lookup[num & 0x3F]
 }
 
 function encodeChunk (uint8, start, end) {
   var tmp
   var output = []
   for (var i = start; i < end; i += 3) {
-    tmp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
+    tmp =
+      ((uint8[i] << 16) & 0xFF0000) +
+      ((uint8[i + 1] << 8) & 0xFF00) +
+      (uint8[i + 2] & 0xFF)
     output.push(tripletToBase64(tmp))
   }
   return output.join('')
@@ -250,30 +284,33 @@ function fromByteArray (uint8) {
   var tmp
   var len = uint8.length
   var extraBytes = len % 3 // if we have 1 byte left, pad 2 bytes
-  var output = ''
   var parts = []
   var maxChunkLength = 16383 // must be multiple of 3
 
   // go through the array every three bytes, we'll deal with trailing stuff later
   for (var i = 0, len2 = len - extraBytes; i < len2; i += maxChunkLength) {
-    parts.push(encodeChunk(uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)))
+    parts.push(encodeChunk(
+      uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)
+    ))
   }
 
   // pad the end with zeros, but make sure to not forget the extra bytes
   if (extraBytes === 1) {
     tmp = uint8[len - 1]
-    output += lookup[tmp >> 2]
-    output += lookup[(tmp << 4) & 0x3F]
-    output += '=='
+    parts.push(
+      lookup[tmp >> 2] +
+      lookup[(tmp << 4) & 0x3F] +
+      '=='
+    )
   } else if (extraBytes === 2) {
-    tmp = (uint8[len - 2] << 8) + (uint8[len - 1])
-    output += lookup[tmp >> 10]
-    output += lookup[(tmp >> 4) & 0x3F]
-    output += lookup[(tmp << 2) & 0x3F]
-    output += '='
+    tmp = (uint8[len - 2] << 8) + uint8[len - 1]
+    parts.push(
+      lookup[tmp >> 10] +
+      lookup[(tmp >> 4) & 0x3F] +
+      lookup[(tmp << 2) & 0x3F] +
+      '='
+    )
   }
-
-  parts.push(output)
 
   return parts.join('')
 }
@@ -299,7 +336,7 @@ function fromByteArray (uint8) {
 
 
 
-var base64 = __webpack_require__(/*! base64-js */ "./node_modules/base64-js/index.js")
+var base64 = __webpack_require__(/*! base64-js */ "./node_modules/buffer/node_modules/base64-js/index.js")
 var ieee754 = __webpack_require__(/*! ieee754 */ "./node_modules/buffer/node_modules/ieee754/index.js")
 var isArray = __webpack_require__(/*! isarray */ "./node_modules/isarray/index.js")
 
@@ -2083,6 +2120,132 @@ function isnan (val) {
 
 /***/ }),
 
+/***/ "./node_modules/buffer/node_modules/base64-js/index.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/buffer/node_modules/base64-js/index.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+exports.byteLength = byteLength
+exports.toByteArray = toByteArray
+exports.fromByteArray = fromByteArray
+
+var lookup = []
+var revLookup = []
+var Arr = typeof Uint8Array !== 'undefined' ? Uint8Array : Array
+
+var code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+for (var i = 0, len = code.length; i < len; ++i) {
+  lookup[i] = code[i]
+  revLookup[code.charCodeAt(i)] = i
+}
+
+revLookup['-'.charCodeAt(0)] = 62
+revLookup['_'.charCodeAt(0)] = 63
+
+function placeHoldersCount (b64) {
+  var len = b64.length
+  if (len % 4 > 0) {
+    throw new Error('Invalid string. Length must be a multiple of 4')
+  }
+
+  // the number of equal signs (place holders)
+  // if there are two placeholders, than the two characters before it
+  // represent one byte
+  // if there is only one, then the three characters before it represent 2 bytes
+  // this is just a cheap hack to not do indexOf twice
+  return b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
+}
+
+function byteLength (b64) {
+  // base64 is 4/3 + up to two characters of the original data
+  return (b64.length * 3 / 4) - placeHoldersCount(b64)
+}
+
+function toByteArray (b64) {
+  var i, l, tmp, placeHolders, arr
+  var len = b64.length
+  placeHolders = placeHoldersCount(b64)
+
+  arr = new Arr((len * 3 / 4) - placeHolders)
+
+  // if there are placeholders, only get up to the last complete 4 chars
+  l = placeHolders > 0 ? len - 4 : len
+
+  var L = 0
+
+  for (i = 0; i < l; i += 4) {
+    tmp = (revLookup[b64.charCodeAt(i)] << 18) | (revLookup[b64.charCodeAt(i + 1)] << 12) | (revLookup[b64.charCodeAt(i + 2)] << 6) | revLookup[b64.charCodeAt(i + 3)]
+    arr[L++] = (tmp >> 16) & 0xFF
+    arr[L++] = (tmp >> 8) & 0xFF
+    arr[L++] = tmp & 0xFF
+  }
+
+  if (placeHolders === 2) {
+    tmp = (revLookup[b64.charCodeAt(i)] << 2) | (revLookup[b64.charCodeAt(i + 1)] >> 4)
+    arr[L++] = tmp & 0xFF
+  } else if (placeHolders === 1) {
+    tmp = (revLookup[b64.charCodeAt(i)] << 10) | (revLookup[b64.charCodeAt(i + 1)] << 4) | (revLookup[b64.charCodeAt(i + 2)] >> 2)
+    arr[L++] = (tmp >> 8) & 0xFF
+    arr[L++] = tmp & 0xFF
+  }
+
+  return arr
+}
+
+function tripletToBase64 (num) {
+  return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F]
+}
+
+function encodeChunk (uint8, start, end) {
+  var tmp
+  var output = []
+  for (var i = start; i < end; i += 3) {
+    tmp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
+    output.push(tripletToBase64(tmp))
+  }
+  return output.join('')
+}
+
+function fromByteArray (uint8) {
+  var tmp
+  var len = uint8.length
+  var extraBytes = len % 3 // if we have 1 byte left, pad 2 bytes
+  var output = ''
+  var parts = []
+  var maxChunkLength = 16383 // must be multiple of 3
+
+  // go through the array every three bytes, we'll deal with trailing stuff later
+  for (var i = 0, len2 = len - extraBytes; i < len2; i += maxChunkLength) {
+    parts.push(encodeChunk(uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)))
+  }
+
+  // pad the end with zeros, but make sure to not forget the extra bytes
+  if (extraBytes === 1) {
+    tmp = uint8[len - 1]
+    output += lookup[tmp >> 2]
+    output += lookup[(tmp << 4) & 0x3F]
+    output += '=='
+  } else if (extraBytes === 2) {
+    tmp = (uint8[len - 2] << 8) + (uint8[len - 1])
+    output += lookup[tmp >> 10]
+    output += lookup[(tmp >> 4) & 0x3F]
+    output += lookup[(tmp << 2) & 0x3F]
+    output += '='
+  }
+
+  parts.push(output)
+
+  return parts.join('')
+}
+
+
+/***/ }),
+
 /***/ "./node_modules/buffer/node_modules/ieee754/index.js":
 /*!***********************************************************!*\
   !*** ./node_modules/buffer/node_modules/ieee754/index.js ***!
@@ -2313,7 +2476,7 @@ module.exports = Array.isArray || function (arr) {
  * [js-md5]{@link https://github.com/emn178/js-md5}
  *
  * @namespace md5
- * @version 0.6.1
+ * @version 0.7.3
  * @author Chen, Yi-Cyuan [emn178@gmail.com]
  * @copyright Chen, Yi-Cyuan 2014-2017
  * @license MIT
@@ -2509,7 +2672,7 @@ module.exports = Array.isArray || function (arr) {
         this.blocks = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       }
     }
-    this.h0 = this.h1 = this.h2 = this.h3 = this.start = this.bytes = 0;
+    this.h0 = this.h1 = this.h2 = this.h3 = this.start = this.bytes = this.hBytes = 0;
     this.finalized = this.hashed = false;
     this.first = true;
   }
@@ -2621,6 +2784,10 @@ module.exports = Array.isArray || function (arr) {
         this.start = i;
       }
     }
+    if (this.bytes > 4294967295) {
+      this.hBytes += this.bytes / 4294967296 << 0;
+      this.bytes = this.bytes % 4294967296;
+    }
     return this;
   };
 
@@ -2642,6 +2809,7 @@ module.exports = Array.isArray || function (arr) {
       blocks[12] = blocks[13] = blocks[14] = blocks[15] = 0;
     }
     blocks[14] = this.bytes << 3;
+    blocks[15] = this.hBytes << 3 | this.bytes >>> 29;
     this.hash();
   };
 
@@ -2993,2327 +3161,598 @@ module.exports = Array.isArray || function (arr) {
 
 /***/ }),
 
-/***/ "./node_modules/localforage/dist/localforage.js":
+/***/ "./node_modules/microee/index.js":
+/*!***************************************!*\
+  !*** ./node_modules/microee/index.js ***!
+  \***************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+function M() { this._events = {}; }
+M.prototype = {
+  on: function(ev, cb) {
+    this._events || (this._events = {});
+    var e = this._events;
+    (e[ev] || (e[ev] = [])).push(cb);
+    return this;
+  },
+  removeListener: function(ev, cb) {
+    var e = this._events[ev] || [], i;
+    for(i = e.length-1; i >= 0 && e[i]; i--){
+      if(e[i] === cb || e[i].cb === cb) { e.splice(i, 1); }
+    }
+  },
+  removeAllListeners: function(ev) {
+    if(!ev) { this._events = {}; }
+    else { this._events[ev] && (this._events[ev] = []); }
+  },
+  listeners: function(ev) {
+    return (this._events ? this._events[ev] || [] : []);
+  },
+  emit: function(ev) {
+    this._events || (this._events = {});
+    var args = Array.prototype.slice.call(arguments, 1), i, e = this._events[ev] || [];
+    for(i = e.length-1; i >= 0 && e[i]; i--){
+      e[i].apply(this, args);
+    }
+    return this;
+  },
+  when: function(ev, cb) {
+    return this.once(ev, cb, true);
+  },
+  once: function(ev, cb, when) {
+    if(!cb) return this;
+    function c() {
+      if(!when) this.removeListener(ev, c);
+      if(cb.apply(this, arguments) && when) this.removeListener(ev, c);
+    }
+    c.cb = cb;
+    this.on(ev, c);
+    return this;
+  }
+};
+M.mixin = function(dest) {
+  var o = M.prototype, k;
+  for (k in o) {
+    o.hasOwnProperty(k) && (dest.prototype[k] = o[k]);
+  }
+};
+module.exports = M;
+
+
+/***/ }),
+
+/***/ "./node_modules/minilog/lib/common/filter.js":
+/*!***************************************************!*\
+  !*** ./node_modules/minilog/lib/common/filter.js ***!
+  \***************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+// default filter
+var Transform = __webpack_require__(/*! ./transform.js */ "./node_modules/minilog/lib/common/transform.js");
+
+var levelMap = { debug: 1, info: 2, warn: 3, error: 4 };
+
+function Filter() {
+  this.enabled = true;
+  this.defaultResult = true;
+  this.clear();
+}
+
+Transform.mixin(Filter);
+
+// allow all matching, with level >= given level
+Filter.prototype.allow = function(name, level) {
+  this._white.push({ n: name, l: levelMap[level] });
+  return this;
+};
+
+// deny all matching, with level <= given level
+Filter.prototype.deny = function(name, level) {
+  this._black.push({ n: name, l: levelMap[level] });
+  return this;
+};
+
+Filter.prototype.clear = function() {
+  this._white = [];
+  this._black = [];
+  return this;
+};
+
+function test(rule, name) {
+  // use .test for RegExps
+  return (rule.n.test ? rule.n.test(name) : rule.n == name);
+};
+
+Filter.prototype.test = function(name, level) {
+  var i, len = Math.max(this._white.length, this._black.length);
+  for(i = 0; i < len; i++) {
+    if(this._white[i] && test(this._white[i], name) && levelMap[level] >= this._white[i].l) {
+      return true;
+    }
+    if(this._black[i] && test(this._black[i], name) && levelMap[level] <= this._black[i].l) {
+      return false;
+    }
+  }
+  return this.defaultResult;
+};
+
+Filter.prototype.write = function(name, level, args) {
+  if(!this.enabled || this.test(name, level)) {
+    return this.emit('item', name, level, args);
+  }
+};
+
+module.exports = Filter;
+
+
+/***/ }),
+
+/***/ "./node_modules/minilog/lib/common/minilog.js":
+/*!****************************************************!*\
+  !*** ./node_modules/minilog/lib/common/minilog.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Transform = __webpack_require__(/*! ./transform.js */ "./node_modules/minilog/lib/common/transform.js"),
+    Filter = __webpack_require__(/*! ./filter.js */ "./node_modules/minilog/lib/common/filter.js");
+
+var log = new Transform(),
+    slice = Array.prototype.slice;
+
+exports = module.exports = function create(name) {
+  var o   = function() { log.write(name, undefined, slice.call(arguments)); return o; };
+  o.debug = function() { log.write(name, 'debug', slice.call(arguments)); return o; };
+  o.info  = function() { log.write(name, 'info',  slice.call(arguments)); return o; };
+  o.warn  = function() { log.write(name, 'warn',  slice.call(arguments)); return o; };
+  o.error = function() { log.write(name, 'error', slice.call(arguments)); return o; };
+  o.log   = o.debug; // for interface compliance with Node and browser consoles
+  o.suggest = exports.suggest;
+  o.format = log.format;
+  return o;
+};
+
+// filled in separately
+exports.defaultBackend = exports.defaultFormatter = null;
+
+exports.pipe = function(dest) {
+  return log.pipe(dest);
+};
+
+exports.end = exports.unpipe = exports.disable = function(from) {
+  return log.unpipe(from);
+};
+
+exports.Transform = Transform;
+exports.Filter = Filter;
+// this is the default filter that's applied when .enable() is called normally
+// you can bypass it completely and set up your own pipes
+exports.suggest = new Filter();
+
+exports.enable = function() {
+  if(exports.defaultFormatter) {
+    return log.pipe(exports.suggest) // filter
+              .pipe(exports.defaultFormatter) // formatter
+              .pipe(exports.defaultBackend); // backend
+  }
+  return log.pipe(exports.suggest) // filter
+            .pipe(exports.defaultBackend); // formatter
+};
+
+
+
+/***/ }),
+
+/***/ "./node_modules/minilog/lib/common/transform.js":
 /*!******************************************************!*\
-  !*** ./node_modules/localforage/dist/localforage.js ***!
+  !*** ./node_modules/minilog/lib/common/transform.js ***!
   \******************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(global) {var require;var require;/*!
-    localForage -- Offline Storage, Improved
-    Version 1.5.0
-    https://localforage.github.io/localForage
-    (c) 2013-2017 Mozilla, Apache License 2.0
-*/
-(function(f){if(true){module.exports=f()}else { var g; }})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return require(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw (f.code="MODULE_NOT_FOUND", f)}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
-(function (global){
-'use strict';
-var Mutation = global.MutationObserver || global.WebKitMutationObserver;
+var microee = __webpack_require__(/*! microee */ "./node_modules/microee/index.js");
 
-var scheduleDrain;
+// Implements a subset of Node's stream.Transform - in a cross-platform manner.
+function Transform() {}
 
-{
-  if (Mutation) {
-    var called = 0;
-    var observer = new Mutation(nextTick);
-    var element = global.document.createTextNode('');
-    observer.observe(element, {
-      characterData: true
-    });
-    scheduleDrain = function () {
-      element.data = (called = ++called % 2);
-    };
-  } else if (!global.setImmediate && typeof global.MessageChannel !== 'undefined') {
-    var channel = new global.MessageChannel();
-    channel.port1.onmessage = nextTick;
-    scheduleDrain = function () {
-      channel.port2.postMessage(0);
-    };
-  } else if ('document' in global && 'onreadystatechange' in global.document.createElement('script')) {
-    scheduleDrain = function () {
+microee.mixin(Transform);
 
-      // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
-      // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
-      var scriptEl = global.document.createElement('script');
-      scriptEl.onreadystatechange = function () {
-        nextTick();
+// The write() signature is different from Node's
+// --> makes it much easier to work with objects in logs.
+// One of the lessons from v1 was that it's better to target
+// a good browser rather than the lowest common denominator
+// internally.
+// If you want to use external streams, pipe() to ./stringify.js first.
+Transform.prototype.write = function(name, level, args) {
+  this.emit('item', name, level, args);
+};
 
-        scriptEl.onreadystatechange = null;
-        scriptEl.parentNode.removeChild(scriptEl);
-        scriptEl = null;
-      };
-      global.document.documentElement.appendChild(scriptEl);
-    };
-  } else {
-    scheduleDrain = function () {
-      setTimeout(nextTick, 0);
-    };
+Transform.prototype.end = function() {
+  this.emit('end');
+  this.removeAllListeners();
+};
+
+Transform.prototype.pipe = function(dest) {
+  var s = this;
+  // prevent double piping
+  s.emit('unpipe', dest);
+  // tell the dest that it's being piped to
+  dest.emit('pipe', s);
+
+  function onItem() {
+    dest.write.apply(dest, Array.prototype.slice.call(arguments));
   }
-}
+  function onEnd() { !dest._isStdio && dest.end(); }
 
-var draining;
-var queue = [];
-//named nextTick for less confusing stack traces
-function nextTick() {
-  draining = true;
-  var i, oldQueue;
-  var len = queue.length;
-  while (len) {
-    oldQueue = queue;
-    queue = [];
-    i = -1;
-    while (++i < len) {
-      oldQueue[i]();
+  s.on('item', onItem);
+  s.on('end', onEnd);
+
+  s.when('unpipe', function(from) {
+    var match = (from === dest) || typeof from == 'undefined';
+    if(match) {
+      s.removeListener('item', onItem);
+      s.removeListener('end', onEnd);
+      dest.emit('unpipe');
     }
-    len = queue.length;
-  }
-  draining = false;
-}
-
-module.exports = immediate;
-function immediate(task) {
-  if (queue.push(task) === 1 && !draining) {
-    scheduleDrain();
-  }
-}
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],2:[function(_dereq_,module,exports){
-'use strict';
-var immediate = _dereq_(1);
-
-/* istanbul ignore next */
-function INTERNAL() {}
-
-var handlers = {};
-
-var REJECTED = ['REJECTED'];
-var FULFILLED = ['FULFILLED'];
-var PENDING = ['PENDING'];
-
-module.exports = exports = Promise;
-
-function Promise(resolver) {
-  if (typeof resolver !== 'function') {
-    throw new TypeError('resolver must be a function');
-  }
-  this.state = PENDING;
-  this.queue = [];
-  this.outcome = void 0;
-  if (resolver !== INTERNAL) {
-    safelyResolveThenable(this, resolver);
-  }
-}
-
-Promise.prototype["catch"] = function (onRejected) {
-  return this.then(null, onRejected);
-};
-Promise.prototype.then = function (onFulfilled, onRejected) {
-  if (typeof onFulfilled !== 'function' && this.state === FULFILLED ||
-    typeof onRejected !== 'function' && this.state === REJECTED) {
-    return this;
-  }
-  var promise = new this.constructor(INTERNAL);
-  if (this.state !== PENDING) {
-    var resolver = this.state === FULFILLED ? onFulfilled : onRejected;
-    unwrap(promise, resolver, this.outcome);
-  } else {
-    this.queue.push(new QueueItem(promise, onFulfilled, onRejected));
-  }
-
-  return promise;
-};
-function QueueItem(promise, onFulfilled, onRejected) {
-  this.promise = promise;
-  if (typeof onFulfilled === 'function') {
-    this.onFulfilled = onFulfilled;
-    this.callFulfilled = this.otherCallFulfilled;
-  }
-  if (typeof onRejected === 'function') {
-    this.onRejected = onRejected;
-    this.callRejected = this.otherCallRejected;
-  }
-}
-QueueItem.prototype.callFulfilled = function (value) {
-  handlers.resolve(this.promise, value);
-};
-QueueItem.prototype.otherCallFulfilled = function (value) {
-  unwrap(this.promise, this.onFulfilled, value);
-};
-QueueItem.prototype.callRejected = function (value) {
-  handlers.reject(this.promise, value);
-};
-QueueItem.prototype.otherCallRejected = function (value) {
-  unwrap(this.promise, this.onRejected, value);
-};
-
-function unwrap(promise, func, value) {
-  immediate(function () {
-    var returnValue;
-    try {
-      returnValue = func(value);
-    } catch (e) {
-      return handlers.reject(promise, e);
-    }
-    if (returnValue === promise) {
-      handlers.reject(promise, new TypeError('Cannot resolve promise with itself'));
-    } else {
-      handlers.resolve(promise, returnValue);
-    }
+    return match;
   });
-}
 
-handlers.resolve = function (self, value) {
-  var result = tryCatch(getThen, value);
-  if (result.status === 'error') {
-    return handlers.reject(self, result.value);
+  return dest;
+};
+
+Transform.prototype.unpipe = function(from) {
+  this.emit('unpipe', from);
+  return this;
+};
+
+Transform.prototype.format = function(dest) {
+  throw new Error([
+    'Warning: .format() is deprecated in Minilog v2! Use .pipe() instead. For example:',
+    'var Minilog = require(\'minilog\');',
+    'Minilog',
+    '  .pipe(Minilog.backends.console.formatClean)',
+    '  .pipe(Minilog.backends.console);'].join('\n'));
+};
+
+Transform.mixin = function(dest) {
+  var o = Transform.prototype, k;
+  for (k in o) {
+    o.hasOwnProperty(k) && (dest.prototype[k] = o[k]);
   }
-  var thenable = result.value;
+};
 
-  if (thenable) {
-    safelyResolveThenable(self, thenable);
+module.exports = Transform;
+
+
+/***/ }),
+
+/***/ "./node_modules/minilog/lib/web/array.js":
+/*!***********************************************!*\
+  !*** ./node_modules/minilog/lib/web/array.js ***!
+  \***********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Transform = __webpack_require__(/*! ../common/transform.js */ "./node_modules/minilog/lib/common/transform.js"),
+    cache = [ ];
+
+var logger = new Transform();
+
+logger.write = function(name, level, args) {
+  cache.push([ name, level, args ]);
+};
+
+// utility functions
+logger.get = function() { return cache; };
+logger.empty = function() { cache = []; };
+
+module.exports = logger;
+
+
+/***/ }),
+
+/***/ "./node_modules/minilog/lib/web/console.js":
+/*!*************************************************!*\
+  !*** ./node_modules/minilog/lib/web/console.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Transform = __webpack_require__(/*! ../common/transform.js */ "./node_modules/minilog/lib/common/transform.js");
+
+var newlines = /\n+$/,
+    logger = new Transform();
+
+logger.write = function(name, level, args) {
+  var i = args.length-1;
+  if (typeof console === 'undefined' || !console.log) {
+    return;
+  }
+  if(console.log.apply) {
+    return console.log.apply(console, [name, level].concat(args));
+  } else if(JSON && JSON.stringify) {
+    // console.log.apply is undefined in IE8 and IE9
+    // for IE8/9: make console.log at least a bit less awful
+    if(args[i] && typeof args[i] == 'string') {
+      args[i] = args[i].replace(newlines, '');
+    }
+    try {
+      for(i = 0; i < args.length; i++) {
+        args[i] = JSON.stringify(args[i]);
+      }
+    } catch(e) {}
+    console.log(args.join(' '));
+  }
+};
+
+logger.formatters = ['color', 'minilog'];
+logger.color = __webpack_require__(/*! ./formatters/color.js */ "./node_modules/minilog/lib/web/formatters/color.js");
+logger.minilog = __webpack_require__(/*! ./formatters/minilog.js */ "./node_modules/minilog/lib/web/formatters/minilog.js");
+
+module.exports = logger;
+
+
+/***/ }),
+
+/***/ "./node_modules/minilog/lib/web/formatters/color.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/minilog/lib/web/formatters/color.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Transform = __webpack_require__(/*! ../../common/transform.js */ "./node_modules/minilog/lib/common/transform.js"),
+    color = __webpack_require__(/*! ./util.js */ "./node_modules/minilog/lib/web/formatters/util.js");
+
+var colors = { debug: ['cyan'], info: ['purple' ], warn: [ 'yellow', true ], error: [ 'red', true ] },
+    logger = new Transform();
+
+logger.write = function(name, level, args) {
+  var fn = console.log;
+  if(console[level] && console[level].apply) {
+    fn = console[level];
+    fn.apply(console, [ '%c'+name+' %c'+level, color('gray'), color.apply(color, colors[level])].concat(args));
+  }
+};
+
+// NOP, because piping the formatted logs can only cause trouble.
+logger.pipe = function() { };
+
+module.exports = logger;
+
+
+/***/ }),
+
+/***/ "./node_modules/minilog/lib/web/formatters/minilog.js":
+/*!************************************************************!*\
+  !*** ./node_modules/minilog/lib/web/formatters/minilog.js ***!
+  \************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Transform = __webpack_require__(/*! ../../common/transform.js */ "./node_modules/minilog/lib/common/transform.js"),
+    color = __webpack_require__(/*! ./util.js */ "./node_modules/minilog/lib/web/formatters/util.js"),
+    colors = { debug: ['gray'], info: ['purple' ], warn: [ 'yellow', true ], error: [ 'red', true ] },
+    logger = new Transform();
+
+logger.write = function(name, level, args) {
+  var fn = console.log;
+  if(level != 'debug' && console[level]) {
+    fn = console[level];
+  }
+
+  var subset = [], i = 0;
+  if(level != 'info') {
+    for(; i < args.length; i++) {
+      if(typeof args[i] != 'string') break;
+    }
+    fn.apply(console, [ '%c'+name +' '+ args.slice(0, i).join(' '), color.apply(color, colors[level]) ].concat(args.slice(i)));
   } else {
-    self.state = FULFILLED;
-    self.outcome = value;
-    var i = -1;
-    var len = self.queue.length;
-    while (++i < len) {
-      self.queue[i].callFulfilled(value);
-    }
+    fn.apply(console, [ '%c'+name, color.apply(color, colors[level]) ].concat(args));
   }
-  return self;
-};
-handlers.reject = function (self, error) {
-  self.state = REJECTED;
-  self.outcome = error;
-  var i = -1;
-  var len = self.queue.length;
-  while (++i < len) {
-    self.queue[i].callRejected(error);
-  }
-  return self;
 };
 
-function getThen(obj) {
-  // Make sure we only access the accessor once as required by the spec
-  var then = obj && obj.then;
-  if (obj && typeof obj === 'object' && typeof then === 'function') {
-    return function appyThen() {
-      then.apply(obj, arguments);
-    };
+// NOP, because piping the formatted logs can only cause trouble.
+logger.pipe = function() { };
+
+module.exports = logger;
+
+
+/***/ }),
+
+/***/ "./node_modules/minilog/lib/web/formatters/util.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/minilog/lib/web/formatters/util.js ***!
+  \*********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+var hex = {
+  black: '#000',
+  red: '#c23621',
+  green: '#25bc26',
+  yellow: '#bbbb00',
+  blue:  '#492ee1',
+  magenta: '#d338d3',
+  cyan: '#33bbc8',
+  gray: '#808080',
+  purple: '#708'
+};
+function color(fg, isInverse) {
+  if(isInverse) {
+    return 'color: #fff; background: '+hex[fg]+';';
+  } else {
+    return 'color: '+hex[fg]+';';
   }
 }
 
-function safelyResolveThenable(self, thenable) {
-  // Either fulfill, reject or reject with error
-  var called = false;
-  function onError(value) {
-    if (called) {
-      return;
-    }
-    called = true;
-    handlers.reject(self, value);
-  }
+module.exports = color;
 
-  function onSuccess(value) {
-    if (called) {
-      return;
-    }
-    called = true;
-    handlers.resolve(self, value);
-  }
 
-  function tryToUnwrap() {
-    thenable(onSuccess, onError);
-  }
+/***/ }),
 
-  var result = tryCatch(tryToUnwrap);
-  if (result.status === 'error') {
-    onError(result.value);
-  }
-}
+/***/ "./node_modules/minilog/lib/web/index.js":
+/*!***********************************************!*\
+  !*** ./node_modules/minilog/lib/web/index.js ***!
+  \***********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
 
-function tryCatch(func, value) {
-  var out = {};
+var Minilog = __webpack_require__(/*! ../common/minilog.js */ "./node_modules/minilog/lib/common/minilog.js");
+
+var oldEnable = Minilog.enable,
+    oldDisable = Minilog.disable,
+    isChrome = (typeof navigator != 'undefined' && /chrome/i.test(navigator.userAgent)),
+    console = __webpack_require__(/*! ./console.js */ "./node_modules/minilog/lib/web/console.js");
+
+// Use a more capable logging backend if on Chrome
+Minilog.defaultBackend = (isChrome ? console.minilog : console);
+
+// apply enable inputs from localStorage and from the URL
+if(typeof window != 'undefined') {
   try {
-    out.value = func(value);
-    out.status = 'success';
-  } catch (e) {
-    out.status = 'error';
-    out.value = e;
+    Minilog.enable(JSON.parse(window.localStorage['minilogSettings']));
+  } catch(e) {}
+  if(window.location && window.location.search) {
+    var match = RegExp('[?&]minilog=([^&]*)').exec(window.location.search);
+    match && Minilog.enable(decodeURIComponent(match[1]));
   }
-  return out;
 }
 
-exports.resolve = resolve;
-function resolve(value) {
-  if (value instanceof this) {
-    return value;
-  }
-  return handlers.resolve(new this(INTERNAL), value);
+// Make enable also add to localStorage
+Minilog.enable = function() {
+  oldEnable.call(Minilog, true);
+  try { window.localStorage['minilogSettings'] = JSON.stringify(true); } catch(e) {}
+  return this;
+};
+
+Minilog.disable = function() {
+  oldDisable.call(Minilog);
+  try { delete window.localStorage.minilogSettings; } catch(e) {}
+  return this;
+};
+
+exports = module.exports = Minilog;
+
+exports.backends = {
+  array: __webpack_require__(/*! ./array.js */ "./node_modules/minilog/lib/web/array.js"),
+  browser: Minilog.defaultBackend,
+  localStorage: __webpack_require__(/*! ./localstorage.js */ "./node_modules/minilog/lib/web/localstorage.js"),
+  jQuery: __webpack_require__(/*! ./jquery_simple.js */ "./node_modules/minilog/lib/web/jquery_simple.js")
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/minilog/lib/web/jquery_simple.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/minilog/lib/web/jquery_simple.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Transform = __webpack_require__(/*! ../common/transform.js */ "./node_modules/minilog/lib/common/transform.js");
+
+var cid = new Date().valueOf().toString(36);
+
+function AjaxLogger(options) {
+  this.url = options.url || '';
+  this.cache = [];
+  this.timer = null;
+  this.interval = options.interval || 30*1000;
+  this.enabled = true;
+  this.jQuery = window.jQuery;
+  this.extras = {};
 }
 
-exports.reject = reject;
-function reject(reason) {
-  var promise = new this(INTERNAL);
-  return handlers.reject(promise, reason);
-}
+Transform.mixin(AjaxLogger);
 
-exports.all = all;
-function all(iterable) {
+AjaxLogger.prototype.write = function(name, level, args) {
+  if(!this.timer) { this.init(); }
+  this.cache.push([name, level].concat(args));
+};
+
+AjaxLogger.prototype.init = function() {
+  if(!this.enabled || !this.jQuery) return;
   var self = this;
-  if (Object.prototype.toString.call(iterable) !== '[object Array]') {
-    return this.reject(new TypeError('must be an array'));
-  }
-
-  var len = iterable.length;
-  var called = false;
-  if (!len) {
-    return this.resolve([]);
-  }
-
-  var values = new Array(len);
-  var resolved = 0;
-  var i = -1;
-  var promise = new this(INTERNAL);
-
-  while (++i < len) {
-    allResolver(iterable[i], i);
-  }
-  return promise;
-  function allResolver(value, i) {
-    self.resolve(value).then(resolveFromAll, function (error) {
-      if (!called) {
-        called = true;
-        handlers.reject(promise, error);
-      }
-    });
-    function resolveFromAll(outValue) {
-      values[i] = outValue;
-      if (++resolved === len && !called) {
-        called = true;
-        handlers.resolve(promise, values);
-      }
+  this.timer = setTimeout(function() {
+    var i, logs = [], ajaxData, url = self.url;
+    if(self.cache.length == 0) return self.init();
+    // Test each log line and only log the ones that are valid (e.g. don't have circular references).
+    // Slight performance hit but benefit is we log all valid lines.
+    for(i = 0; i < self.cache.length; i++) {
+      try {
+        JSON.stringify(self.cache[i]);
+        logs.push(self.cache[i]);
+      } catch(e) { }
     }
-  }
-}
-
-exports.race = race;
-function race(iterable) {
-  var self = this;
-  if (Object.prototype.toString.call(iterable) !== '[object Array]') {
-    return this.reject(new TypeError('must be an array'));
-  }
-
-  var len = iterable.length;
-  var called = false;
-  if (!len) {
-    return this.resolve([]);
-  }
-
-  var i = -1;
-  var promise = new this(INTERNAL);
-
-  while (++i < len) {
-    resolver(iterable[i]);
-  }
-  return promise;
-  function resolver(value) {
-    self.resolve(value).then(function (response) {
-      if (!called) {
-        called = true;
-        handlers.resolve(promise, response);
-      }
-    }, function (error) {
-      if (!called) {
-        called = true;
-        handlers.reject(promise, error);
-      }
-    });
-  }
-}
-
-},{"1":1}],3:[function(_dereq_,module,exports){
-(function (global){
-'use strict';
-if (typeof global.Promise !== 'function') {
-  global.Promise = _dereq_(2);
-}
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"2":2}],4:[function(_dereq_,module,exports){
-'use strict';
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function getIDB() {
-    /* global indexedDB,webkitIndexedDB,mozIndexedDB,OIndexedDB,msIndexedDB */
-    try {
-        if (typeof indexedDB !== 'undefined') {
-            return indexedDB;
-        }
-        if (typeof webkitIndexedDB !== 'undefined') {
-            return webkitIndexedDB;
-        }
-        if (typeof mozIndexedDB !== 'undefined') {
-            return mozIndexedDB;
-        }
-        if (typeof OIndexedDB !== 'undefined') {
-            return OIndexedDB;
-        }
-        if (typeof msIndexedDB !== 'undefined') {
-            return msIndexedDB;
-        }
-    } catch (e) {}
-}
-
-var idb = getIDB();
-
-function isIndexedDBValid() {
-    try {
-        // Initialize IndexedDB; fall back to vendor-prefixed versions
-        // if needed.
-        if (!idb) {
-            return false;
-        }
-        // We mimic PouchDB here;
-        //
-        // We test for openDatabase because IE Mobile identifies itself
-        // as Safari. Oh the lulz...
-        var isSafari = typeof openDatabase !== 'undefined' && /(Safari|iPhone|iPad|iPod)/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent) && !/BlackBerry/.test(navigator.platform);
-
-        var hasFetch = typeof fetch === 'function' && fetch.toString().indexOf('[native code') !== -1;
-
-        // Safari <10.1 does not meet our requirements for IDB support (#5572)
-        // since Safari 10.1 shipped with fetch, we can use that to detect it
-        return (!isSafari || hasFetch) && typeof indexedDB !== 'undefined' &&
-        // some outdated implementations of IDB that appear on Samsung
-        // and HTC Android devices <4.4 are missing IDBKeyRange
-        typeof IDBKeyRange !== 'undefined';
-    } catch (e) {
-        return false;
-    }
-}
-
-function isWebSQLValid() {
-    return typeof openDatabase === 'function';
-}
-
-function isLocalStorageValid() {
-    try {
-        return typeof localStorage !== 'undefined' && 'setItem' in localStorage && localStorage.setItem;
-    } catch (e) {
-        return false;
-    }
-}
-
-// Abstracts constructing a Blob object, so it also works in older
-// browsers that don't support the native Blob constructor. (i.e.
-// old QtWebKit versions, at least).
-// Abstracts constructing a Blob object, so it also works in older
-// browsers that don't support the native Blob constructor. (i.e.
-// old QtWebKit versions, at least).
-function createBlob(parts, properties) {
-    /* global BlobBuilder,MSBlobBuilder,MozBlobBuilder,WebKitBlobBuilder */
-    parts = parts || [];
-    properties = properties || {};
-    try {
-        return new Blob(parts, properties);
-    } catch (e) {
-        if (e.name !== 'TypeError') {
-            throw e;
-        }
-        var Builder = typeof BlobBuilder !== 'undefined' ? BlobBuilder : typeof MSBlobBuilder !== 'undefined' ? MSBlobBuilder : typeof MozBlobBuilder !== 'undefined' ? MozBlobBuilder : WebKitBlobBuilder;
-        var builder = new Builder();
-        for (var i = 0; i < parts.length; i += 1) {
-            builder.append(parts[i]);
-        }
-        return builder.getBlob(properties.type);
-    }
-}
-
-// This is CommonJS because lie is an external dependency, so Rollup
-// can just ignore it.
-if (typeof Promise === 'undefined') {
-    // In the "nopromises" build this will just throw if you don't have
-    // a global promise object, but it would throw anyway later.
-    _dereq_(3);
-}
-var Promise$1 = Promise;
-
-function executeCallback(promise, callback) {
-    if (callback) {
-        promise.then(function (result) {
-            callback(null, result);
-        }, function (error) {
-            callback(error);
-        });
-    }
-}
-
-function executeTwoCallbacks(promise, callback, errorCallback) {
-    if (typeof callback === 'function') {
-        promise.then(callback);
-    }
-
-    if (typeof errorCallback === 'function') {
-        promise["catch"](errorCallback);
-    }
-}
-
-// Some code originally from async_storage.js in
-// [Gaia](https://github.com/mozilla-b2g/gaia).
-
-var DETECT_BLOB_SUPPORT_STORE = 'local-forage-detect-blob-support';
-var supportsBlobs;
-var dbContexts;
-var toString = Object.prototype.toString;
-
-// Transform a binary string to an array buffer, because otherwise
-// weird stuff happens when you try to work with the binary string directly.
-// It is known.
-// From http://stackoverflow.com/questions/14967647/ (continues on next line)
-// encode-decode-image-with-base64-breaks-image (2013-04-21)
-function _binStringToArrayBuffer(bin) {
-    var length = bin.length;
-    var buf = new ArrayBuffer(length);
-    var arr = new Uint8Array(buf);
-    for (var i = 0; i < length; i++) {
-        arr[i] = bin.charCodeAt(i);
-    }
-    return buf;
-}
-
-//
-// Blobs are not supported in all versions of IndexedDB, notably
-// Chrome <37 and Android <5. In those versions, storing a blob will throw.
-//
-// Various other blob bugs exist in Chrome v37-42 (inclusive).
-// Detecting them is expensive and confusing to users, and Chrome 37-42
-// is at very low usage worldwide, so we do a hacky userAgent check instead.
-//
-// content-type bug: https://code.google.com/p/chromium/issues/detail?id=408120
-// 404 bug: https://code.google.com/p/chromium/issues/detail?id=447916
-// FileReader bug: https://code.google.com/p/chromium/issues/detail?id=447836
-//
-// Code borrowed from PouchDB. See:
-// https://github.com/pouchdb/pouchdb/blob/master/packages/node_modules/pouchdb-adapter-idb/src/blobSupport.js
-//
-function _checkBlobSupportWithoutCaching(idb) {
-    return new Promise$1(function (resolve) {
-        var txn = idb.transaction(DETECT_BLOB_SUPPORT_STORE, 'readwrite');
-        var blob = createBlob(['']);
-        txn.objectStore(DETECT_BLOB_SUPPORT_STORE).put(blob, 'key');
-
-        txn.onabort = function (e) {
-            // If the transaction aborts now its due to not being able to
-            // write to the database, likely due to the disk being full
-            e.preventDefault();
-            e.stopPropagation();
-            resolve(false);
-        };
-
-        txn.oncomplete = function () {
-            var matchedChrome = navigator.userAgent.match(/Chrome\/(\d+)/);
-            var matchedEdge = navigator.userAgent.match(/Edge\//);
-            // MS Edge pretends to be Chrome 42:
-            // https://msdn.microsoft.com/en-us/library/hh869301%28v=vs.85%29.aspx
-            resolve(matchedEdge || !matchedChrome || parseInt(matchedChrome[1], 10) >= 43);
-        };
-    })["catch"](function () {
-        return false; // error, so assume unsupported
-    });
-}
-
-function _checkBlobSupport(idb) {
-    if (typeof supportsBlobs === 'boolean') {
-        return Promise$1.resolve(supportsBlobs);
-    }
-    return _checkBlobSupportWithoutCaching(idb).then(function (value) {
-        supportsBlobs = value;
-        return supportsBlobs;
-    });
-}
-
-function _deferReadiness(dbInfo) {
-    var dbContext = dbContexts[dbInfo.name];
-
-    // Create a deferred object representing the current database operation.
-    var deferredOperation = {};
-
-    deferredOperation.promise = new Promise$1(function (resolve) {
-        deferredOperation.resolve = resolve;
-    });
-
-    // Enqueue the deferred operation.
-    dbContext.deferredOperations.push(deferredOperation);
-
-    // Chain its promise to the database readiness.
-    if (!dbContext.dbReady) {
-        dbContext.dbReady = deferredOperation.promise;
+    if(self.jQuery.isEmptyObject(self.extras)) {
+        ajaxData = JSON.stringify({ logs: logs });
+        url = self.url + '?client_id=' + cid;
     } else {
-        dbContext.dbReady = dbContext.dbReady.then(function () {
-            return deferredOperation.promise;
-        });
+        ajaxData = JSON.stringify(self.jQuery.extend({logs: logs}, self.extras));
     }
-}
 
-function _advanceReadiness(dbInfo) {
-    var dbContext = dbContexts[dbInfo.name];
-
-    // Dequeue a deferred operation.
-    var deferredOperation = dbContext.deferredOperations.pop();
-
-    // Resolve its promise (which is part of the database readiness
-    // chain of promises).
-    if (deferredOperation) {
-        deferredOperation.resolve();
-    }
-}
-
-function _getConnection(dbInfo, upgradeNeeded) {
-    return new Promise$1(function (resolve, reject) {
-
-        if (dbInfo.db) {
-            if (upgradeNeeded) {
-                _deferReadiness(dbInfo);
-                dbInfo.db.close();
-            } else {
-                return resolve(dbInfo.db);
-            }
-        }
-
-        var dbArgs = [dbInfo.name];
-
-        if (upgradeNeeded) {
-            dbArgs.push(dbInfo.version);
-        }
-
-        var openreq = idb.open.apply(idb, dbArgs);
-
-        if (upgradeNeeded) {
-            openreq.onupgradeneeded = function (e) {
-                var db = openreq.result;
-                try {
-                    db.createObjectStore(dbInfo.storeName);
-                    if (e.oldVersion <= 1) {
-                        // Added when support for blob shims was added
-                        db.createObjectStore(DETECT_BLOB_SUPPORT_STORE);
-                    }
-                } catch (ex) {
-                    if (ex.name === 'ConstraintError') {
-                        console.warn('The database "' + dbInfo.name + '"' + ' has been upgraded from version ' + e.oldVersion + ' to version ' + e.newVersion + ', but the storage "' + dbInfo.storeName + '" already exists.');
-                    } else {
-                        throw ex;
-                    }
-                }
-            };
-        }
-
-        openreq.onerror = function (e) {
-            e.preventDefault();
-            reject(openreq.error);
-        };
-
-        openreq.onsuccess = function () {
-            resolve(openreq.result);
-            _advanceReadiness(dbInfo);
-        };
+    self.jQuery.ajax(url, {
+      type: 'POST',
+      cache: false,
+      processData: false,
+      data: ajaxData,
+      contentType: 'application/json',
+      timeout: 10000
+    }).success(function(data, status, jqxhr) {
+      if(data.interval) {
+        self.interval = Math.max(1000, data.interval);
+      }
+    }).error(function() {
+      self.interval = 30000;
+    }).always(function() {
+      self.init();
     });
-}
-
-function _getOriginalConnection(dbInfo) {
-    return _getConnection(dbInfo, false);
-}
-
-function _getUpgradedConnection(dbInfo) {
-    return _getConnection(dbInfo, true);
-}
-
-function _isUpgradeNeeded(dbInfo, defaultVersion) {
-    if (!dbInfo.db) {
-        return true;
-    }
-
-    var isNewStore = !dbInfo.db.objectStoreNames.contains(dbInfo.storeName);
-    var isDowngrade = dbInfo.version < dbInfo.db.version;
-    var isUpgrade = dbInfo.version > dbInfo.db.version;
-
-    if (isDowngrade) {
-        // If the version is not the default one
-        // then warn for impossible downgrade.
-        if (dbInfo.version !== defaultVersion) {
-            console.warn('The database "' + dbInfo.name + '"' + ' can\'t be downgraded from version ' + dbInfo.db.version + ' to version ' + dbInfo.version + '.');
-        }
-        // Align the versions to prevent errors.
-        dbInfo.version = dbInfo.db.version;
-    }
-
-    if (isUpgrade || isNewStore) {
-        // If the store is new then increment the version (if needed).
-        // This will trigger an "upgradeneeded" event which is required
-        // for creating a store.
-        if (isNewStore) {
-            var incVersion = dbInfo.db.version + 1;
-            if (incVersion > dbInfo.version) {
-                dbInfo.version = incVersion;
-            }
-        }
-
-        return true;
-    }
-
-    return false;
-}
-
-// encode a blob for indexeddb engines that don't support blobs
-function _encodeBlob(blob) {
-    return new Promise$1(function (resolve, reject) {
-        var reader = new FileReader();
-        reader.onerror = reject;
-        reader.onloadend = function (e) {
-            var base64 = btoa(e.target.result || '');
-            resolve({
-                __local_forage_encoded_blob: true,
-                data: base64,
-                type: blob.type
-            });
-        };
-        reader.readAsBinaryString(blob);
-    });
-}
-
-// decode an encoded blob
-function _decodeBlob(encodedBlob) {
-    var arrayBuff = _binStringToArrayBuffer(atob(encodedBlob.data));
-    return createBlob([arrayBuff], { type: encodedBlob.type });
-}
-
-// is this one of our fancy encoded blobs?
-function _isEncodedBlob(value) {
-    return value && value.__local_forage_encoded_blob;
-}
-
-// Specialize the default `ready()` function by making it dependent
-// on the current database operations. Thus, the driver will be actually
-// ready when it's been initialized (default) *and* there are no pending
-// operations on the database (initiated by some other instances).
-function _fullyReady(callback) {
-    var self = this;
-
-    var promise = self._initReady().then(function () {
-        var dbContext = dbContexts[self._dbInfo.name];
-
-        if (dbContext && dbContext.dbReady) {
-            return dbContext.dbReady;
-        }
-    });
-
-    executeTwoCallbacks(promise, callback, callback);
-    return promise;
-}
-
-// Open the IndexedDB database (automatically creates one if one didn't
-// previously exist), using any options set in the config.
-function _initStorage(options) {
-    var self = this;
-    var dbInfo = {
-        db: null
-    };
-
-    if (options) {
-        for (var i in options) {
-            dbInfo[i] = options[i];
-        }
-    }
-
-    // Initialize a singleton container for all running localForages.
-    if (!dbContexts) {
-        dbContexts = {};
-    }
-
-    // Get the current context of the database;
-    var dbContext = dbContexts[dbInfo.name];
-
-    // ...or create a new context.
-    if (!dbContext) {
-        dbContext = {
-            // Running localForages sharing a database.
-            forages: [],
-            // Shared database.
-            db: null,
-            // Database readiness (promise).
-            dbReady: null,
-            // Deferred operations on the database.
-            deferredOperations: []
-        };
-        // Register the new context in the global container.
-        dbContexts[dbInfo.name] = dbContext;
-    }
-
-    // Register itself as a running localForage in the current context.
-    dbContext.forages.push(self);
-
-    // Replace the default `ready()` function with the specialized one.
-    if (!self._initReady) {
-        self._initReady = self.ready;
-        self.ready = _fullyReady;
-    }
-
-    // Create an array of initialization states of the related localForages.
-    var initPromises = [];
-
-    function ignoreErrors() {
-        // Don't handle errors here,
-        // just makes sure related localForages aren't pending.
-        return Promise$1.resolve();
-    }
-
-    for (var j = 0; j < dbContext.forages.length; j++) {
-        var forage = dbContext.forages[j];
-        if (forage !== self) {
-            // Don't wait for itself...
-            initPromises.push(forage._initReady()["catch"](ignoreErrors));
-        }
-    }
-
-    // Take a snapshot of the related localForages.
-    var forages = dbContext.forages.slice(0);
-
-    // Initialize the connection process only when
-    // all the related localForages aren't pending.
-    return Promise$1.all(initPromises).then(function () {
-        dbInfo.db = dbContext.db;
-        // Get the connection or open a new one without upgrade.
-        return _getOriginalConnection(dbInfo);
-    }).then(function (db) {
-        dbInfo.db = db;
-        if (_isUpgradeNeeded(dbInfo, self._defaultConfig.version)) {
-            // Reopen the database for upgrading.
-            return _getUpgradedConnection(dbInfo);
-        }
-        return db;
-    }).then(function (db) {
-        dbInfo.db = dbContext.db = db;
-        self._dbInfo = dbInfo;
-        // Share the final connection amongst related localForages.
-        for (var k = 0; k < forages.length; k++) {
-            var forage = forages[k];
-            if (forage !== self) {
-                // Self is already up-to-date.
-                forage._dbInfo.db = dbInfo.db;
-                forage._dbInfo.version = dbInfo.version;
-            }
-        }
-    });
-}
-
-function getItem(key, callback) {
-    var self = this;
-
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            var store = dbInfo.db.transaction(dbInfo.storeName, 'readonly').objectStore(dbInfo.storeName);
-            var req = store.get(key);
-
-            req.onsuccess = function () {
-                var value = req.result;
-                if (value === undefined) {
-                    value = null;
-                }
-                if (_isEncodedBlob(value)) {
-                    value = _decodeBlob(value);
-                }
-                resolve(value);
-            };
-
-            req.onerror = function () {
-                reject(req.error);
-            };
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Iterate over all items stored in database.
-function iterate(iterator, callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            var store = dbInfo.db.transaction(dbInfo.storeName, 'readonly').objectStore(dbInfo.storeName);
-
-            var req = store.openCursor();
-            var iterationNumber = 1;
-
-            req.onsuccess = function () {
-                var cursor = req.result;
-
-                if (cursor) {
-                    var value = cursor.value;
-                    if (_isEncodedBlob(value)) {
-                        value = _decodeBlob(value);
-                    }
-                    var result = iterator(value, cursor.key, iterationNumber++);
-
-                    if (result !== void 0) {
-                        resolve(result);
-                    } else {
-                        cursor["continue"]();
-                    }
-                } else {
-                    resolve();
-                }
-            };
-
-            req.onerror = function () {
-                reject(req.error);
-            };
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-
-    return promise;
-}
-
-function setItem(key, value, callback) {
-    var self = this;
-
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    var promise = new Promise$1(function (resolve, reject) {
-        var dbInfo;
-        self.ready().then(function () {
-            dbInfo = self._dbInfo;
-            if (toString.call(value) === '[object Blob]') {
-                return _checkBlobSupport(dbInfo.db).then(function (blobSupport) {
-                    if (blobSupport) {
-                        return value;
-                    }
-                    return _encodeBlob(value);
-                });
-            }
-            return value;
-        }).then(function (value) {
-            var transaction = dbInfo.db.transaction(dbInfo.storeName, 'readwrite');
-            var store = transaction.objectStore(dbInfo.storeName);
-            var req = store.put(value, key);
-
-            // The reason we don't _save_ null is because IE 10 does
-            // not support saving the `null` type in IndexedDB. How
-            // ironic, given the bug below!
-            // See: https://github.com/mozilla/localForage/issues/161
-            if (value === null) {
-                value = undefined;
-            }
-
-            transaction.oncomplete = function () {
-                // Cast to undefined so the value passed to
-                // callback/promise is the same as what one would get out
-                // of `getItem()` later. This leads to some weirdness
-                // (setItem('foo', undefined) will return `null`), but
-                // it's not my fault localStorage is our baseline and that
-                // it's weird.
-                if (value === undefined) {
-                    value = null;
-                }
-
-                resolve(value);
-            };
-            transaction.onabort = transaction.onerror = function () {
-                var err = req.error ? req.error : req.transaction.error;
-                reject(err);
-            };
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function removeItem(key, callback) {
-    var self = this;
-
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            var transaction = dbInfo.db.transaction(dbInfo.storeName, 'readwrite');
-            var store = transaction.objectStore(dbInfo.storeName);
-
-            // We use a Grunt task to make this safe for IE and some
-            // versions of Android (including those used by Cordova).
-            // Normally IE won't like `.delete()` and will insist on
-            // using `['delete']()`, but we have a build step that
-            // fixes this for us now.
-            var req = store["delete"](key);
-            transaction.oncomplete = function () {
-                resolve();
-            };
-
-            transaction.onerror = function () {
-                reject(req.error);
-            };
-
-            // The request will be also be aborted if we've exceeded our storage
-            // space.
-            transaction.onabort = function () {
-                var err = req.error ? req.error : req.transaction.error;
-                reject(err);
-            };
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function clear(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            var transaction = dbInfo.db.transaction(dbInfo.storeName, 'readwrite');
-            var store = transaction.objectStore(dbInfo.storeName);
-            var req = store.clear();
-
-            transaction.oncomplete = function () {
-                resolve();
-            };
-
-            transaction.onabort = transaction.onerror = function () {
-                var err = req.error ? req.error : req.transaction.error;
-                reject(err);
-            };
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function length(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            var store = dbInfo.db.transaction(dbInfo.storeName, 'readonly').objectStore(dbInfo.storeName);
-            var req = store.count();
-
-            req.onsuccess = function () {
-                resolve(req.result);
-            };
-
-            req.onerror = function () {
-                reject(req.error);
-            };
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function key(n, callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        if (n < 0) {
-            resolve(null);
-
-            return;
-        }
-
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            var store = dbInfo.db.transaction(dbInfo.storeName, 'readonly').objectStore(dbInfo.storeName);
-
-            var advanced = false;
-            var req = store.openCursor();
-            req.onsuccess = function () {
-                var cursor = req.result;
-                if (!cursor) {
-                    // this means there weren't enough keys
-                    resolve(null);
-
-                    return;
-                }
-
-                if (n === 0) {
-                    // We have the first key, return it if that's what they
-                    // wanted.
-                    resolve(cursor.key);
-                } else {
-                    if (!advanced) {
-                        // Otherwise, ask the cursor to skip ahead n
-                        // records.
-                        advanced = true;
-                        cursor.advance(n);
-                    } else {
-                        // When we get here, we've got the nth key.
-                        resolve(cursor.key);
-                    }
-                }
-            };
-
-            req.onerror = function () {
-                reject(req.error);
-            };
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function keys(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            var store = dbInfo.db.transaction(dbInfo.storeName, 'readonly').objectStore(dbInfo.storeName);
-
-            var req = store.openCursor();
-            var keys = [];
-
-            req.onsuccess = function () {
-                var cursor = req.result;
-
-                if (!cursor) {
-                    resolve(keys);
-                    return;
-                }
-
-                keys.push(cursor.key);
-                cursor["continue"]();
-            };
-
-            req.onerror = function () {
-                reject(req.error);
-            };
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-var asyncStorage = {
-    _driver: 'asyncStorage',
-    _initStorage: _initStorage,
-    iterate: iterate,
-    getItem: getItem,
-    setItem: setItem,
-    removeItem: removeItem,
-    clear: clear,
-    length: length,
-    key: key,
-    keys: keys
+    self.cache = [];
+  }, this.interval);
 };
 
-// Sadly, the best way to save binary data in WebSQL/localStorage is serializing
-// it to Base64, so this is how we store it to prevent very strange errors with less
-// verbose ways of binary <-> string data storage.
-var BASE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+AjaxLogger.prototype.end = function() {};
 
-var BLOB_TYPE_PREFIX = '~~local_forage_type~';
-var BLOB_TYPE_PREFIX_REGEX = /^~~local_forage_type~([^~]+)~/;
-
-var SERIALIZED_MARKER = '__lfsc__:';
-var SERIALIZED_MARKER_LENGTH = SERIALIZED_MARKER.length;
-
-// OMG the serializations!
-var TYPE_ARRAYBUFFER = 'arbf';
-var TYPE_BLOB = 'blob';
-var TYPE_INT8ARRAY = 'si08';
-var TYPE_UINT8ARRAY = 'ui08';
-var TYPE_UINT8CLAMPEDARRAY = 'uic8';
-var TYPE_INT16ARRAY = 'si16';
-var TYPE_INT32ARRAY = 'si32';
-var TYPE_UINT16ARRAY = 'ur16';
-var TYPE_UINT32ARRAY = 'ui32';
-var TYPE_FLOAT32ARRAY = 'fl32';
-var TYPE_FLOAT64ARRAY = 'fl64';
-var TYPE_SERIALIZED_MARKER_LENGTH = SERIALIZED_MARKER_LENGTH + TYPE_ARRAYBUFFER.length;
-
-var toString$1 = Object.prototype.toString;
-
-function stringToBuffer(serializedString) {
-    // Fill the string into a ArrayBuffer.
-    var bufferLength = serializedString.length * 0.75;
-    var len = serializedString.length;
-    var i;
-    var p = 0;
-    var encoded1, encoded2, encoded3, encoded4;
-
-    if (serializedString[serializedString.length - 1] === '=') {
-        bufferLength--;
-        if (serializedString[serializedString.length - 2] === '=') {
-            bufferLength--;
-        }
-    }
-
-    var buffer = new ArrayBuffer(bufferLength);
-    var bytes = new Uint8Array(buffer);
-
-    for (i = 0; i < len; i += 4) {
-        encoded1 = BASE_CHARS.indexOf(serializedString[i]);
-        encoded2 = BASE_CHARS.indexOf(serializedString[i + 1]);
-        encoded3 = BASE_CHARS.indexOf(serializedString[i + 2]);
-        encoded4 = BASE_CHARS.indexOf(serializedString[i + 3]);
-
-        /*jslint bitwise: true */
-        bytes[p++] = encoded1 << 2 | encoded2 >> 4;
-        bytes[p++] = (encoded2 & 15) << 4 | encoded3 >> 2;
-        bytes[p++] = (encoded3 & 3) << 6 | encoded4 & 63;
-    }
-    return buffer;
-}
-
-// Converts a buffer to a string to store, serialized, in the backend
-// storage library.
-function bufferToString(buffer) {
-    // base64-arraybuffer
-    var bytes = new Uint8Array(buffer);
-    var base64String = '';
-    var i;
-
-    for (i = 0; i < bytes.length; i += 3) {
-        /*jslint bitwise: true */
-        base64String += BASE_CHARS[bytes[i] >> 2];
-        base64String += BASE_CHARS[(bytes[i] & 3) << 4 | bytes[i + 1] >> 4];
-        base64String += BASE_CHARS[(bytes[i + 1] & 15) << 2 | bytes[i + 2] >> 6];
-        base64String += BASE_CHARS[bytes[i + 2] & 63];
-    }
-
-    if (bytes.length % 3 === 2) {
-        base64String = base64String.substring(0, base64String.length - 1) + '=';
-    } else if (bytes.length % 3 === 1) {
-        base64String = base64String.substring(0, base64String.length - 2) + '==';
-    }
-
-    return base64String;
-}
-
-// Serialize a value, afterwards executing a callback (which usually
-// instructs the `setItem()` callback/promise to be executed). This is how
-// we store binary data with localStorage.
-function serialize(value, callback) {
-    var valueType = '';
-    if (value) {
-        valueType = toString$1.call(value);
-    }
-
-    // Cannot use `value instanceof ArrayBuffer` or such here, as these
-    // checks fail when running the tests using casper.js...
-    //
-    // TODO: See why those tests fail and use a better solution.
-    if (value && (valueType === '[object ArrayBuffer]' || value.buffer && toString$1.call(value.buffer) === '[object ArrayBuffer]')) {
-        // Convert binary arrays to a string and prefix the string with
-        // a special marker.
-        var buffer;
-        var marker = SERIALIZED_MARKER;
-
-        if (value instanceof ArrayBuffer) {
-            buffer = value;
-            marker += TYPE_ARRAYBUFFER;
-        } else {
-            buffer = value.buffer;
-
-            if (valueType === '[object Int8Array]') {
-                marker += TYPE_INT8ARRAY;
-            } else if (valueType === '[object Uint8Array]') {
-                marker += TYPE_UINT8ARRAY;
-            } else if (valueType === '[object Uint8ClampedArray]') {
-                marker += TYPE_UINT8CLAMPEDARRAY;
-            } else if (valueType === '[object Int16Array]') {
-                marker += TYPE_INT16ARRAY;
-            } else if (valueType === '[object Uint16Array]') {
-                marker += TYPE_UINT16ARRAY;
-            } else if (valueType === '[object Int32Array]') {
-                marker += TYPE_INT32ARRAY;
-            } else if (valueType === '[object Uint32Array]') {
-                marker += TYPE_UINT32ARRAY;
-            } else if (valueType === '[object Float32Array]') {
-                marker += TYPE_FLOAT32ARRAY;
-            } else if (valueType === '[object Float64Array]') {
-                marker += TYPE_FLOAT64ARRAY;
-            } else {
-                callback(new Error('Failed to get type for BinaryArray'));
-            }
-        }
-
-        callback(marker + bufferToString(buffer));
-    } else if (valueType === '[object Blob]') {
-        // Conver the blob to a binaryArray and then to a string.
-        var fileReader = new FileReader();
-
-        fileReader.onload = function () {
-            // Backwards-compatible prefix for the blob type.
-            var str = BLOB_TYPE_PREFIX + value.type + '~' + bufferToString(this.result);
-
-            callback(SERIALIZED_MARKER + TYPE_BLOB + str);
-        };
-
-        fileReader.readAsArrayBuffer(value);
-    } else {
-        try {
-            callback(JSON.stringify(value));
-        } catch (e) {
-            console.error("Couldn't convert value into a JSON string: ", value);
-
-            callback(null, e);
-        }
-    }
-}
-
-// Deserialize data we've inserted into a value column/field. We place
-// special markers into our strings to mark them as encoded; this isn't
-// as nice as a meta field, but it's the only sane thing we can do whilst
-// keeping localStorage support intact.
-//
-// Oftentimes this will just deserialize JSON content, but if we have a
-// special marker (SERIALIZED_MARKER, defined above), we will extract
-// some kind of arraybuffer/binary data/typed array out of the string.
-function deserialize(value) {
-    // If we haven't marked this string as being specially serialized (i.e.
-    // something other than serialized JSON), we can just return it and be
-    // done with it.
-    if (value.substring(0, SERIALIZED_MARKER_LENGTH) !== SERIALIZED_MARKER) {
-        return JSON.parse(value);
-    }
-
-    // The following code deals with deserializing some kind of Blob or
-    // TypedArray. First we separate out the type of data we're dealing
-    // with from the data itself.
-    var serializedString = value.substring(TYPE_SERIALIZED_MARKER_LENGTH);
-    var type = value.substring(SERIALIZED_MARKER_LENGTH, TYPE_SERIALIZED_MARKER_LENGTH);
-
-    var blobType;
-    // Backwards-compatible blob type serialization strategy.
-    // DBs created with older versions of localForage will simply not have the blob type.
-    if (type === TYPE_BLOB && BLOB_TYPE_PREFIX_REGEX.test(serializedString)) {
-        var matcher = serializedString.match(BLOB_TYPE_PREFIX_REGEX);
-        blobType = matcher[1];
-        serializedString = serializedString.substring(matcher[0].length);
-    }
-    var buffer = stringToBuffer(serializedString);
-
-    // Return the right type based on the code/type set during
-    // serialization.
-    switch (type) {
-        case TYPE_ARRAYBUFFER:
-            return buffer;
-        case TYPE_BLOB:
-            return createBlob([buffer], { type: blobType });
-        case TYPE_INT8ARRAY:
-            return new Int8Array(buffer);
-        case TYPE_UINT8ARRAY:
-            return new Uint8Array(buffer);
-        case TYPE_UINT8CLAMPEDARRAY:
-            return new Uint8ClampedArray(buffer);
-        case TYPE_INT16ARRAY:
-            return new Int16Array(buffer);
-        case TYPE_UINT16ARRAY:
-            return new Uint16Array(buffer);
-        case TYPE_INT32ARRAY:
-            return new Int32Array(buffer);
-        case TYPE_UINT32ARRAY:
-            return new Uint32Array(buffer);
-        case TYPE_FLOAT32ARRAY:
-            return new Float32Array(buffer);
-        case TYPE_FLOAT64ARRAY:
-            return new Float64Array(buffer);
-        default:
-            throw new Error('Unkown type: ' + type);
-    }
-}
-
-var localforageSerializer = {
-    serialize: serialize,
-    deserialize: deserialize,
-    stringToBuffer: stringToBuffer,
-    bufferToString: bufferToString
+// wait until jQuery is defined. Useful if you don't control the load order.
+AjaxLogger.jQueryWait = function(onDone) {
+  if(typeof window !== 'undefined' && (window.jQuery || window.$)) {
+    return onDone(window.jQuery || window.$);
+  } else if (typeof window !== 'undefined') {
+    setTimeout(function() { AjaxLogger.jQueryWait(onDone); }, 200);
+  }
 };
 
-/*
- * Includes code from:
- *
- * base64-arraybuffer
- * https://github.com/niklasvh/base64-arraybuffer
- *
- * Copyright (c) 2012 Niklas von Hertzen
- * Licensed under the MIT license.
- */
-// Open the WebSQL database (automatically creates one if one didn't
-// previously exist), using any options set in the config.
-function _initStorage$1(options) {
-    var self = this;
-    var dbInfo = {
-        db: null
-    };
+module.exports = AjaxLogger;
 
-    if (options) {
-        for (var i in options) {
-            dbInfo[i] = typeof options[i] !== 'string' ? options[i].toString() : options[i];
-        }
-    }
 
-    var dbInfoPromise = new Promise$1(function (resolve, reject) {
-        // Open the database; the openDatabase API will automatically
-        // create it for us if it doesn't exist.
-        try {
-            dbInfo.db = openDatabase(dbInfo.name, String(dbInfo.version), dbInfo.description, dbInfo.size);
-        } catch (e) {
-            return reject(e);
-        }
+/***/ }),
 
-        // Create our key/value table if it doesn't exist.
-        dbInfo.db.transaction(function (t) {
-            t.executeSql('CREATE TABLE IF NOT EXISTS ' + dbInfo.storeName + ' (id INTEGER PRIMARY KEY, key unique, value)', [], function () {
-                self._dbInfo = dbInfo;
-                resolve();
-            }, function (t, error) {
-                reject(error);
-            });
-        });
-    });
+/***/ "./node_modules/minilog/lib/web/localstorage.js":
+/*!******************************************************!*\
+  !*** ./node_modules/minilog/lib/web/localstorage.js ***!
+  \******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
 
-    dbInfo.serializer = localforageSerializer;
-    return dbInfoPromise;
-}
+var Transform = __webpack_require__(/*! ../common/transform.js */ "./node_modules/minilog/lib/common/transform.js"),
+    cache = false;
 
-function getItem$1(key, callback) {
-    var self = this;
+var logger = new Transform();
 
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('SELECT * FROM ' + dbInfo.storeName + ' WHERE key = ? LIMIT 1', [key], function (t, results) {
-                    var result = results.rows.length ? results.rows.item(0).value : null;
-
-                    // Check to see if this is serialized content we need to
-                    // unpack.
-                    if (result) {
-                        result = dbInfo.serializer.deserialize(result);
-                    }
-
-                    resolve(result);
-                }, function (t, error) {
-
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function iterate$1(iterator, callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('SELECT * FROM ' + dbInfo.storeName, [], function (t, results) {
-                    var rows = results.rows;
-                    var length = rows.length;
-
-                    for (var i = 0; i < length; i++) {
-                        var item = rows.item(i);
-                        var result = item.value;
-
-                        // Check to see if this is serialized content
-                        // we need to unpack.
-                        if (result) {
-                            result = dbInfo.serializer.deserialize(result);
-                        }
-
-                        result = iterator(result, item.key, i + 1);
-
-                        // void(0) prevents problems with redefinition
-                        // of `undefined`.
-                        if (result !== void 0) {
-                            resolve(result);
-                            return;
-                        }
-                    }
-
-                    resolve();
-                }, function (t, error) {
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function _setItem(key, value, callback, retriesLeft) {
-    var self = this;
-
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            // The localStorage API doesn't return undefined values in an
-            // "expected" way, so undefined is always cast to null in all
-            // drivers. See: https://github.com/mozilla/localForage/pull/42
-            if (value === undefined) {
-                value = null;
-            }
-
-            // Save the original value to pass to the callback.
-            var originalValue = value;
-
-            var dbInfo = self._dbInfo;
-            dbInfo.serializer.serialize(value, function (value, error) {
-                if (error) {
-                    reject(error);
-                } else {
-                    dbInfo.db.transaction(function (t) {
-                        t.executeSql('INSERT OR REPLACE INTO ' + dbInfo.storeName + ' (key, value) VALUES (?, ?)', [key, value], function () {
-                            resolve(originalValue);
-                        }, function (t, error) {
-                            reject(error);
-                        });
-                    }, function (sqlError) {
-                        // The transaction failed; check
-                        // to see if it's a quota error.
-                        if (sqlError.code === sqlError.QUOTA_ERR) {
-                            // We reject the callback outright for now, but
-                            // it's worth trying to re-run the transaction.
-                            // Even if the user accepts the prompt to use
-                            // more storage on Safari, this error will
-                            // be called.
-                            //
-                            // Try to re-run the transaction.
-                            if (retriesLeft > 0) {
-                                resolve(_setItem.apply(self, [key, originalValue, callback, retriesLeft - 1]));
-                                return;
-                            }
-                            reject(sqlError);
-                        }
-                    });
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function setItem$1(key, value, callback) {
-    return _setItem.apply(this, [key, value, callback, 1]);
-}
-
-function removeItem$1(key, callback) {
-    var self = this;
-
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('DELETE FROM ' + dbInfo.storeName + ' WHERE key = ?', [key], function () {
-                    resolve();
-                }, function (t, error) {
-
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Deletes every item in the table.
-// TODO: Find out if this resets the AUTO_INCREMENT number.
-function clear$1(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('DELETE FROM ' + dbInfo.storeName, [], function () {
-                    resolve();
-                }, function (t, error) {
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Does a simple `COUNT(key)` to get the number of items stored in
-// localForage.
-function length$1(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                // Ahhh, SQL makes this one soooooo easy.
-                t.executeSql('SELECT COUNT(key) as c FROM ' + dbInfo.storeName, [], function (t, results) {
-                    var result = results.rows.item(0).c;
-
-                    resolve(result);
-                }, function (t, error) {
-
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Return the key located at key index X; essentially gets the key from a
-// `WHERE id = ?`. This is the most efficient way I can think to implement
-// this rarely-used (in my experience) part of the API, but it can seem
-// inconsistent, because we do `INSERT OR REPLACE INTO` on `setItem()`, so
-// the ID of each key will change every time it's updated. Perhaps a stored
-// procedure for the `setItem()` SQL would solve this problem?
-// TODO: Don't change ID on `setItem()`.
-function key$1(n, callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('SELECT key FROM ' + dbInfo.storeName + ' WHERE id = ? LIMIT 1', [n + 1], function (t, results) {
-                    var result = results.rows.length ? results.rows.item(0).key : null;
-                    resolve(result);
-                }, function (t, error) {
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function keys$1(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('SELECT key FROM ' + dbInfo.storeName, [], function (t, results) {
-                    var keys = [];
-
-                    for (var i = 0; i < results.rows.length; i++) {
-                        keys.push(results.rows.item(i).key);
-                    }
-
-                    resolve(keys);
-                }, function (t, error) {
-
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-var webSQLStorage = {
-    _driver: 'webSQLStorage',
-    _initStorage: _initStorage$1,
-    iterate: iterate$1,
-    getItem: getItem$1,
-    setItem: setItem$1,
-    removeItem: removeItem$1,
-    clear: clear$1,
-    length: length$1,
-    key: key$1,
-    keys: keys$1
+logger.write = function(name, level, args) {
+  if(typeof window == 'undefined' || typeof JSON == 'undefined' || !JSON.stringify || !JSON.parse) return;
+  try {
+    if(!cache) { cache = (window.localStorage.minilog ? JSON.parse(window.localStorage.minilog) : []); }
+    cache.push([ new Date().toString(), name, level, args ]);
+    window.localStorage.minilog = JSON.stringify(cache);
+  } catch(e) {}
 };
 
-// Config the localStorage backend, using options set in the config.
-function _initStorage$2(options) {
-    var self = this;
-    var dbInfo = {};
-    if (options) {
-        for (var i in options) {
-            dbInfo[i] = options[i];
-        }
-    }
-
-    dbInfo.keyPrefix = dbInfo.name + '/';
-
-    if (dbInfo.storeName !== self._defaultConfig.storeName) {
-        dbInfo.keyPrefix += dbInfo.storeName + '/';
-    }
-
-    self._dbInfo = dbInfo;
-    dbInfo.serializer = localforageSerializer;
-
-    return Promise$1.resolve();
-}
-
-// Remove all keys from the datastore, effectively destroying all data in
-// the app's key/value store!
-function clear$2(callback) {
-    var self = this;
-    var promise = self.ready().then(function () {
-        var keyPrefix = self._dbInfo.keyPrefix;
-
-        for (var i = localStorage.length - 1; i >= 0; i--) {
-            var key = localStorage.key(i);
-
-            if (key.indexOf(keyPrefix) === 0) {
-                localStorage.removeItem(key);
-            }
-        }
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Retrieve an item from the store. Unlike the original async_storage
-// library in Gaia, we don't modify return values at all. If a key's value
-// is `undefined`, we pass that value to the callback function.
-function getItem$2(key, callback) {
-    var self = this;
-
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        var result = localStorage.getItem(dbInfo.keyPrefix + key);
-
-        // If a result was found, parse it from the serialized
-        // string into a JS object. If result isn't truthy, the key
-        // is likely undefined and we'll pass it straight to the
-        // callback.
-        if (result) {
-            result = dbInfo.serializer.deserialize(result);
-        }
-
-        return result;
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Iterate over all items in the store.
-function iterate$2(iterator, callback) {
-    var self = this;
-
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        var keyPrefix = dbInfo.keyPrefix;
-        var keyPrefixLength = keyPrefix.length;
-        var length = localStorage.length;
-
-        // We use a dedicated iterator instead of the `i` variable below
-        // so other keys we fetch in localStorage aren't counted in
-        // the `iterationNumber` argument passed to the `iterate()`
-        // callback.
-        //
-        // See: github.com/mozilla/localForage/pull/435#discussion_r38061530
-        var iterationNumber = 1;
-
-        for (var i = 0; i < length; i++) {
-            var key = localStorage.key(i);
-            if (key.indexOf(keyPrefix) !== 0) {
-                continue;
-            }
-            var value = localStorage.getItem(key);
-
-            // If a result was found, parse it from the serialized
-            // string into a JS object. If result isn't truthy, the
-            // key is likely undefined and we'll pass it straight
-            // to the iterator.
-            if (value) {
-                value = dbInfo.serializer.deserialize(value);
-            }
-
-            value = iterator(value, key.substring(keyPrefixLength), iterationNumber++);
-
-            if (value !== void 0) {
-                return value;
-            }
-        }
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Same as localStorage's key() method, except takes a callback.
-function key$2(n, callback) {
-    var self = this;
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        var result;
-        try {
-            result = localStorage.key(n);
-        } catch (error) {
-            result = null;
-        }
-
-        // Remove the prefix from the key, if a key is found.
-        if (result) {
-            result = result.substring(dbInfo.keyPrefix.length);
-        }
-
-        return result;
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function keys$2(callback) {
-    var self = this;
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        var length = localStorage.length;
-        var keys = [];
-
-        for (var i = 0; i < length; i++) {
-            if (localStorage.key(i).indexOf(dbInfo.keyPrefix) === 0) {
-                keys.push(localStorage.key(i).substring(dbInfo.keyPrefix.length));
-            }
-        }
-
-        return keys;
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Supply the number of keys in the datastore to the callback function.
-function length$2(callback) {
-    var self = this;
-    var promise = self.keys().then(function (keys) {
-        return keys.length;
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Remove an item from the store, nice and simple.
-function removeItem$2(key, callback) {
-    var self = this;
-
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        localStorage.removeItem(dbInfo.keyPrefix + key);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Set a key's value and run an optional callback once the value is set.
-// Unlike Gaia's implementation, the callback function is passed the value,
-// in case you want to operate on that value only after you're sure it
-// saved, or something like that.
-function setItem$2(key, value, callback) {
-    var self = this;
-
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    var promise = self.ready().then(function () {
-        // Convert undefined values to null.
-        // https://github.com/mozilla/localForage/pull/42
-        if (value === undefined) {
-            value = null;
-        }
-
-        // Save the original value to pass to the callback.
-        var originalValue = value;
-
-        return new Promise$1(function (resolve, reject) {
-            var dbInfo = self._dbInfo;
-            dbInfo.serializer.serialize(value, function (value, error) {
-                if (error) {
-                    reject(error);
-                } else {
-                    try {
-                        localStorage.setItem(dbInfo.keyPrefix + key, value);
-                        resolve(originalValue);
-                    } catch (e) {
-                        // localStorage capacity exceeded.
-                        // TODO: Make this a specific error/event.
-                        if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-                            reject(e);
-                        }
-                        reject(e);
-                    }
-                }
-            });
-        });
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-var localStorageWrapper = {
-    _driver: 'localStorageWrapper',
-    _initStorage: _initStorage$2,
-    // Default API, from Gaia/localStorage.
-    iterate: iterate$2,
-    getItem: getItem$2,
-    setItem: setItem$2,
-    removeItem: removeItem$2,
-    clear: clear$2,
-    length: length$2,
-    key: key$2,
-    keys: keys$2
-};
-
-// Custom drivers are stored here when `defineDriver()` is called.
-// They are shared across all instances of localForage.
-var CustomDrivers = {};
-
-var DriverType = {
-    INDEXEDDB: 'asyncStorage',
-    LOCALSTORAGE: 'localStorageWrapper',
-    WEBSQL: 'webSQLStorage'
-};
-
-var DefaultDriverOrder = [DriverType.INDEXEDDB, DriverType.WEBSQL, DriverType.LOCALSTORAGE];
-
-var LibraryMethods = ['clear', 'getItem', 'iterate', 'key', 'keys', 'length', 'removeItem', 'setItem'];
-
-var DefaultConfig = {
-    description: '',
-    driver: DefaultDriverOrder.slice(),
-    name: 'localforage',
-    // Default DB size is _JUST UNDER_ 5MB, as it's the highest size
-    // we can use without a prompt.
-    size: 4980736,
-    storeName: 'keyvaluepairs',
-    version: 1.0
-};
-
-var driverSupport = {};
-// Check to see if IndexedDB is available and if it is the latest
-// implementation; it's our preferred backend library. We use "_spec_test"
-// as the name of the database because it's not the one we'll operate on,
-// but it's useful to make sure its using the right spec.
-// See: https://github.com/mozilla/localForage/issues/128
-driverSupport[DriverType.INDEXEDDB] = isIndexedDBValid();
-
-driverSupport[DriverType.WEBSQL] = isWebSQLValid();
-
-driverSupport[DriverType.LOCALSTORAGE] = isLocalStorageValid();
-
-var isArray = Array.isArray || function (arg) {
-    return Object.prototype.toString.call(arg) === '[object Array]';
-};
-
-function callWhenReady(localForageInstance, libraryMethod) {
-    localForageInstance[libraryMethod] = function () {
-        var _args = arguments;
-        return localForageInstance.ready().then(function () {
-            return localForageInstance[libraryMethod].apply(localForageInstance, _args);
-        });
-    };
-}
-
-function extend() {
-    for (var i = 1; i < arguments.length; i++) {
-        var arg = arguments[i];
-
-        if (arg) {
-            for (var key in arg) {
-                if (arg.hasOwnProperty(key)) {
-                    if (isArray(arg[key])) {
-                        arguments[0][key] = arg[key].slice();
-                    } else {
-                        arguments[0][key] = arg[key];
-                    }
-                }
-            }
-        }
-    }
-
-    return arguments[0];
-}
-
-function isLibraryDriver(driverName) {
-    for (var driver in DriverType) {
-        if (DriverType.hasOwnProperty(driver) && DriverType[driver] === driverName) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-var LocalForage = function () {
-    function LocalForage(options) {
-        _classCallCheck(this, LocalForage);
-
-        this.INDEXEDDB = DriverType.INDEXEDDB;
-        this.LOCALSTORAGE = DriverType.LOCALSTORAGE;
-        this.WEBSQL = DriverType.WEBSQL;
-
-        this._defaultConfig = extend({}, DefaultConfig);
-        this._config = extend({}, this._defaultConfig, options);
-        this._driverSet = null;
-        this._initDriver = null;
-        this._ready = false;
-        this._dbInfo = null;
-
-        this._wrapLibraryMethodsWithReady();
-        this.setDriver(this._config.driver)["catch"](function () {});
-    }
-
-    // Set any config values for localForage; can be called anytime before
-    // the first API call (e.g. `getItem`, `setItem`).
-    // We loop through options so we don't overwrite existing config
-    // values.
-
-
-    LocalForage.prototype.config = function config(options) {
-        // If the options argument is an object, we use it to set values.
-        // Otherwise, we return either a specified config value or all
-        // config values.
-        if ((typeof options === 'undefined' ? 'undefined' : _typeof(options)) === 'object') {
-            // If localforage is ready and fully initialized, we can't set
-            // any new configuration values. Instead, we return an error.
-            if (this._ready) {
-                return new Error("Can't call config() after localforage " + 'has been used.');
-            }
-
-            for (var i in options) {
-                if (i === 'storeName') {
-                    options[i] = options[i].replace(/\W/g, '_');
-                }
-
-                if (i === 'version' && typeof options[i] !== 'number') {
-                    return new Error('Database version must be a number.');
-                }
-
-                this._config[i] = options[i];
-            }
-
-            // after all config options are set and
-            // the driver option is used, try setting it
-            if ('driver' in options && options.driver) {
-                return this.setDriver(this._config.driver);
-            }
-
-            return true;
-        } else if (typeof options === 'string') {
-            return this._config[options];
-        } else {
-            return this._config;
-        }
-    };
-
-    // Used to define a custom driver, shared across all instances of
-    // localForage.
-
-
-    LocalForage.prototype.defineDriver = function defineDriver(driverObject, callback, errorCallback) {
-        var promise = new Promise$1(function (resolve, reject) {
-            try {
-                var driverName = driverObject._driver;
-                var complianceError = new Error('Custom driver not compliant; see ' + 'https://mozilla.github.io/localForage/#definedriver');
-                var namingError = new Error('Custom driver name already in use: ' + driverObject._driver);
-
-                // A driver name should be defined and not overlap with the
-                // library-defined, default drivers.
-                if (!driverObject._driver) {
-                    reject(complianceError);
-                    return;
-                }
-                if (isLibraryDriver(driverObject._driver)) {
-                    reject(namingError);
-                    return;
-                }
-
-                var customDriverMethods = LibraryMethods.concat('_initStorage');
-                for (var i = 0; i < customDriverMethods.length; i++) {
-                    var customDriverMethod = customDriverMethods[i];
-                    if (!customDriverMethod || !driverObject[customDriverMethod] || typeof driverObject[customDriverMethod] !== 'function') {
-                        reject(complianceError);
-                        return;
-                    }
-                }
-
-                var supportPromise = Promise$1.resolve(true);
-                if ('_support' in driverObject) {
-                    if (driverObject._support && typeof driverObject._support === 'function') {
-                        supportPromise = driverObject._support();
-                    } else {
-                        supportPromise = Promise$1.resolve(!!driverObject._support);
-                    }
-                }
-
-                supportPromise.then(function (supportResult) {
-                    driverSupport[driverName] = supportResult;
-                    CustomDrivers[driverName] = driverObject;
-                    resolve();
-                }, reject);
-            } catch (e) {
-                reject(e);
-            }
-        });
-
-        executeTwoCallbacks(promise, callback, errorCallback);
-        return promise;
-    };
-
-    LocalForage.prototype.driver = function driver() {
-        return this._driver || null;
-    };
-
-    LocalForage.prototype.getDriver = function getDriver(driverName, callback, errorCallback) {
-        var self = this;
-        var getDriverPromise = Promise$1.resolve().then(function () {
-            if (isLibraryDriver(driverName)) {
-                switch (driverName) {
-                    case self.INDEXEDDB:
-                        return asyncStorage;
-                    case self.LOCALSTORAGE:
-                        return localStorageWrapper;
-                    case self.WEBSQL:
-                        return webSQLStorage;
-                }
-            } else if (CustomDrivers[driverName]) {
-                return CustomDrivers[driverName];
-            } else {
-                throw new Error('Driver not found.');
-            }
-        });
-        executeTwoCallbacks(getDriverPromise, callback, errorCallback);
-        return getDriverPromise;
-    };
-
-    LocalForage.prototype.getSerializer = function getSerializer(callback) {
-        var serializerPromise = Promise$1.resolve(localforageSerializer);
-        executeTwoCallbacks(serializerPromise, callback);
-        return serializerPromise;
-    };
-
-    LocalForage.prototype.ready = function ready(callback) {
-        var self = this;
-
-        var promise = self._driverSet.then(function () {
-            if (self._ready === null) {
-                self._ready = self._initDriver();
-            }
-
-            return self._ready;
-        });
-
-        executeTwoCallbacks(promise, callback, callback);
-        return promise;
-    };
-
-    LocalForage.prototype.setDriver = function setDriver(drivers, callback, errorCallback) {
-        var self = this;
-
-        if (!isArray(drivers)) {
-            drivers = [drivers];
-        }
-
-        var supportedDrivers = this._getSupportedDrivers(drivers);
-
-        function setDriverToConfig() {
-            self._config.driver = self.driver();
-        }
-
-        function extendSelfWithDriver(driver) {
-            self._extend(driver);
-            setDriverToConfig();
-
-            self._ready = self._initStorage(self._config);
-            return self._ready;
-        }
-
-        function initDriver(supportedDrivers) {
-            return function () {
-                var currentDriverIndex = 0;
-
-                function driverPromiseLoop() {
-                    while (currentDriverIndex < supportedDrivers.length) {
-                        var driverName = supportedDrivers[currentDriverIndex];
-                        currentDriverIndex++;
-
-                        self._dbInfo = null;
-                        self._ready = null;
-
-                        return self.getDriver(driverName).then(extendSelfWithDriver)["catch"](driverPromiseLoop);
-                    }
-
-                    setDriverToConfig();
-                    var error = new Error('No available storage method found.');
-                    self._driverSet = Promise$1.reject(error);
-                    return self._driverSet;
-                }
-
-                return driverPromiseLoop();
-            };
-        }
-
-        // There might be a driver initialization in progress
-        // so wait for it to finish in order to avoid a possible
-        // race condition to set _dbInfo
-        var oldDriverSetDone = this._driverSet !== null ? this._driverSet["catch"](function () {
-            return Promise$1.resolve();
-        }) : Promise$1.resolve();
-
-        this._driverSet = oldDriverSetDone.then(function () {
-            var driverName = supportedDrivers[0];
-            self._dbInfo = null;
-            self._ready = null;
-
-            return self.getDriver(driverName).then(function (driver) {
-                self._driver = driver._driver;
-                setDriverToConfig();
-                self._wrapLibraryMethodsWithReady();
-                self._initDriver = initDriver(supportedDrivers);
-            });
-        })["catch"](function () {
-            setDriverToConfig();
-            var error = new Error('No available storage method found.');
-            self._driverSet = Promise$1.reject(error);
-            return self._driverSet;
-        });
-
-        executeTwoCallbacks(this._driverSet, callback, errorCallback);
-        return this._driverSet;
-    };
-
-    LocalForage.prototype.supports = function supports(driverName) {
-        return !!driverSupport[driverName];
-    };
-
-    LocalForage.prototype._extend = function _extend(libraryMethodsAndProperties) {
-        extend(this, libraryMethodsAndProperties);
-    };
-
-    LocalForage.prototype._getSupportedDrivers = function _getSupportedDrivers(drivers) {
-        var supportedDrivers = [];
-        for (var i = 0, len = drivers.length; i < len; i++) {
-            var driverName = drivers[i];
-            if (this.supports(driverName)) {
-                supportedDrivers.push(driverName);
-            }
-        }
-        return supportedDrivers;
-    };
-
-    LocalForage.prototype._wrapLibraryMethodsWithReady = function _wrapLibraryMethodsWithReady() {
-        // Add a stub for each driver API method that delays the call to the
-        // corresponding driver method until localForage is ready. These stubs
-        // will be replaced by the driver methods as soon as the driver is
-        // loaded, so there is no performance impact.
-        for (var i = 0; i < LibraryMethods.length; i++) {
-            callWhenReady(this, LibraryMethods[i]);
-        }
-    };
-
-    LocalForage.prototype.createInstance = function createInstance(options) {
-        return new LocalForage(options);
-    };
-
-    return LocalForage;
-}();
-
-// The actual localForage object that we expose as a module or via a
-// global. It's extended by pulling in one of our other libraries.
-
-
-var localforage_js = new LocalForage();
-
-module.exports = localforage_js;
-
-},{"3":3}]},{},[4])(4)
-});
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
+module.exports = logger;
 
 /***/ }),
 
@@ -9349,102 +7788,121 @@ function extend() {
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var TextDecoder = __webpack_require__(/*! text-encoding */ "./node_modules/text-encoding/index.js").TextDecoder;
-var TextEncoder = __webpack_require__(/*! text-encoding */ "./node_modules/text-encoding/index.js").TextEncoder;
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+// Use JS implemented TextDecoder and TextEncoder if it is not provided by the
+// browser.
+var _TextDecoder;
+
+var _TextEncoder;
+
+var encoding = __webpack_require__(/*! text-encoding */ "./node_modules/text-encoding/index.js");
+
+if (typeof TextDecoder === 'undefined' || typeof TextEncoder === 'undefined') {
+  _TextDecoder = encoding.TextDecoder;
+  _TextEncoder = encoding.TextEncoder;
+} else {
+  /* global TextDecoder TextEncoder */
+  _TextDecoder = TextDecoder;
+  _TextEncoder = TextEncoder;
+}
+
 var base64js = __webpack_require__(/*! base64-js */ "./node_modules/base64-js/index.js");
 
+var md5 = __webpack_require__(/*! js-md5 */ "./node_modules/js-md5/src/md5.js");
+
 var memoizedToString = function () {
-    var strings = {};
-    return function (assetId, data) {
-        if (!strings.hasOwnProperty(assetId)) {
-            strings[assetId] = base64js.fromByteArray(data);
-        }
-        return strings[assetId];
-    };
-}();
-
-var Asset = function () {
-    /**
-     * Construct an Asset.
-     * @param {AssetType} assetType - The type of this asset (sound, image, etc.)
-     * @param {string} assetId - The ID of this asset.
-     * @param {DataFormat} [dataFormat] - The format of the data (WAV, PNG, etc.); required iff `data` is present.
-     * @param {Buffer} [data] - The in-memory data for this asset; optional.
-     */
-    function Asset(assetType, assetId, dataFormat, data) {
-        _classCallCheck(this, Asset);
-
-        /** @type {AssetType} */
-        this.assetType = assetType;
-
-        /** @type {string} */
-        this.assetId = assetId;
-
-        this.setData(data, dataFormat || assetType.runtimeFormat);
-
-        /** @type {Asset[]} */
-        this.dependencies = [];
+  var strings = {};
+  return function (assetId, data) {
+    if (!strings.hasOwnProperty(assetId)) {
+      strings[assetId] = base64js.fromByteArray(data);
     }
 
-    _createClass(Asset, [{
-        key: 'setData',
-        value: function setData(data, dataFormat) {
-            if (data && !dataFormat) {
-                throw new Error('Data provided without specifying its format');
-            }
+    return strings[assetId];
+  };
+}();
 
-            /** @type {DataFormat} */
-            this.dataFormat = dataFormat;
+var Asset =
+/*#__PURE__*/
+function () {
+  /**
+   * Construct an Asset.
+   * @param {AssetType} assetType - The type of this asset (sound, image, etc.)
+   * @param {string} assetId - The ID of this asset.
+   * @param {DataFormat} [dataFormat] - The format of the data (WAV, PNG, etc.); required iff `data` is present.
+   * @param {Buffer} [data] - The in-memory data for this asset; optional.
+   * @param {bool} [generateId] - Whether to create id from an md5 hash of data
+   */
+  function Asset(assetType, assetId, dataFormat, data, generateId) {
+    _classCallCheck(this, Asset);
 
-            /** @type {Buffer} */
-            this.data = data;
-        }
+    /** @type {AssetType} */
+    this.assetType = assetType;
+    /** @type {string} */
 
-        /**
-         * @returns {string} - This asset's data, decoded as text.
-         */
+    this.assetId = assetId;
+    this.setData(data, dataFormat || assetType.runtimeFormat, generateId);
+    /** @type {Asset[]} */
 
-    }, {
-        key: 'decodeText',
-        value: function decodeText() {
-            var decoder = new TextDecoder();
-            return decoder.decode(this.data);
-        }
+    this.dependencies = [];
+  }
 
-        /**
-         * Same as `setData` but encodes text first.
-         * @param {string} data - the text data to encode and store.
-         * @param {DataFormat} dataFormat - the format of the data (DataFormat.SVG for example).
-         */
+  _createClass(Asset, [{
+    key: "setData",
+    value: function setData(data, dataFormat, generateId) {
+      if (data && !dataFormat) {
+        throw new Error('Data provided without specifying its format');
+      }
+      /** @type {DataFormat} */
 
-    }, {
-        key: 'encodeTextData',
-        value: function encodeTextData(data, dataFormat) {
-            var encoder = new TextEncoder();
-            this.setData(encoder.encode(data), dataFormat);
-        }
 
-        /**
-         * @param {string} [contentType] - Optionally override the content type to be included in the data URI.
-         * @returns {string} - A data URI representing the asset's data.
-         */
+      this.dataFormat = dataFormat;
+      /** @type {Buffer} */
 
-    }, {
-        key: 'encodeDataURI',
-        value: function encodeDataURI(contentType) {
-            contentType = contentType || this.assetType.contentType;
-            return 'data:' + contentType + ';base64,' + memoizedToString(this.assetId, this.data);
-        }
-    }]);
+      this.data = data;
+      if (generateId) this.assetId = md5(data);
+    }
+    /**
+     * @returns {string} - This asset's data, decoded as text.
+     */
 
-    return Asset;
+  }, {
+    key: "decodeText",
+    value: function decodeText() {
+      var decoder = new _TextDecoder();
+      return decoder.decode(this.data);
+    }
+    /**
+     * Same as `setData` but encodes text first.
+     * @param {string} data - the text data to encode and store.
+     * @param {DataFormat} dataFormat - the format of the data (DataFormat.SVG for example).
+     * @param {bool} generateId - after setting data, set the id to an md5 of the data?
+     */
+
+  }, {
+    key: "encodeTextData",
+    value: function encodeTextData(data, dataFormat, generateId) {
+      var encoder = new _TextEncoder();
+      this.setData(encoder.encode(data), dataFormat, generateId);
+    }
+    /**
+     * @param {string} [contentType] - Optionally override the content type to be included in the data URI.
+     * @returns {string} - A data URI representing the asset's data.
+     */
+
+  }, {
+    key: "encodeDataURI",
+    value: function encodeDataURI(contentType) {
+      contentType = contentType || this.assetType.contentType;
+      return "data:".concat(contentType, ";base64,").concat(memoizedToString(this.assetId, this.data));
+    }
+  }]);
+
+  return Asset;
 }();
 
 module.exports = Asset;
@@ -9458,11 +7916,7 @@ module.exports = Asset;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-
-
 var DataFormat = __webpack_require__(/*! ./DataFormat */ "./src/DataFormat.js");
-
 /**
  * Enumeration of the supported asset types.
  * @type {Object.<String,AssetType>}
@@ -9473,39 +7927,40 @@ var DataFormat = __webpack_require__(/*! ./DataFormat */ "./src/DataFormat.js");
  *     example, a project stored in SB2 format on disk will be returned as JSON when loaded into memory.
  * @property {boolean} immutable - Indicates if the asset id is determined by the asset content.
  */
-var AssetType = {
-    ImageBitmap: {
-        contentType: 'image/png',
-        name: 'ImageBitmap',
-        runtimeFormat: DataFormat.PNG,
-        immutable: true
-    },
-    ImageVector: {
-        contentType: 'image/svg+xml',
-        name: 'ImageVector',
-        runtimeFormat: DataFormat.SVG,
-        immutable: true
-    },
-    Project: {
-        contentType: 'application/json',
-        name: 'Project',
-        runtimeFormat: DataFormat.JSON,
-        immutable: false
-    },
-    Sound: {
-        contentType: 'audio/x-wav',
-        name: 'Sound',
-        runtimeFormat: DataFormat.WAV,
-        immutable: true
-    },
-    Sprite: {
-        contentType: 'application/json',
-        name: 'Sprite',
-        runtimeFormat: DataFormat.JSON,
-        immutable: true
-    }
-};
 
+
+var AssetType = {
+  ImageBitmap: {
+    contentType: 'image/png',
+    name: 'ImageBitmap',
+    runtimeFormat: DataFormat.PNG,
+    immutable: true
+  },
+  ImageVector: {
+    contentType: 'image/svg+xml',
+    name: 'ImageVector',
+    runtimeFormat: DataFormat.SVG,
+    immutable: true
+  },
+  Project: {
+    contentType: 'application/json',
+    name: 'Project',
+    runtimeFormat: DataFormat.JSON,
+    immutable: false
+  },
+  Sound: {
+    contentType: 'audio/x-wav',
+    name: 'Sound',
+    runtimeFormat: DataFormat.WAV,
+    immutable: true
+  },
+  Sprite: {
+    contentType: 'application/json',
+    name: 'Sprite',
+    runtimeFormat: DataFormat.JSON,
+    immutable: true
+  }
+};
 module.exports = AssetType;
 
 /***/ }),
@@ -9517,24 +7972,35 @@ module.exports = AssetType;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-/* WEBPACK VAR INJECTION */(function(Buffer) {
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+/* WEBPACK VAR INJECTION */(function(Buffer) {function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
 var md5 = __webpack_require__(/*! js-md5 */ "./node_modules/js-md5/src/md5.js");
 
-var Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
-var AssetType = __webpack_require__(/*! ./AssetType */ "./src/AssetType.js");
-var DataFormat = __webpack_require__(/*! ./DataFormat */ "./src/DataFormat.js");
-var Helper = __webpack_require__(/*! ./Helper */ "./src/Helper.js");
+var log = __webpack_require__(/*! ./log */ "./src/log.js");
 
+var Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
+
+var AssetType = __webpack_require__(/*! ./AssetType */ "./src/AssetType.js");
+
+var DataFormat = __webpack_require__(/*! ./DataFormat */ "./src/DataFormat.js");
+
+var Helper = __webpack_require__(/*! ./Helper */ "./src/Helper.js");
 /**
  * @typedef {object} BuiltinAssetRecord
  * @property {AssetType} type - The type of the asset.
@@ -9546,127 +8012,167 @@ var Helper = __webpack_require__(/*! ./Helper */ "./src/Helper.js");
 /**
  * @type {BuiltinAssetRecord[]}
  */
-var DefaultAssets = [{
-    type: AssetType.ImageBitmap,
-    format: DataFormat.PNG,
-    id: null,
-    data: new Buffer(__webpack_require__(/*! arraybuffer-loader!./builtins/defaultBitmap.png */ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultBitmap.png") // eslint-disable-line global-require
-    )
-}, {
-    type: AssetType.Sound,
-    format: DataFormat.WAV,
-    id: null,
-    data: new Buffer(__webpack_require__(/*! arraybuffer-loader!./builtins/defaultSound.wav */ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultSound.wav") // eslint-disable-line global-require
-    )
-}, {
-    type: AssetType.ImageVector,
-    format: DataFormat.SVG,
-    id: null,
-    data: new Buffer(__webpack_require__(/*! arraybuffer-loader!./builtins/defaultVector.svg */ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultVector.svg") // eslint-disable-line global-require
-    )
-}];
 
+
+var DefaultAssets = [{
+  type: AssetType.ImageBitmap,
+  format: DataFormat.PNG,
+  id: null,
+  data: new Buffer(__webpack_require__(/*! arraybuffer-loader!./builtins/defaultBitmap.png */ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultBitmap.png") // eslint-disable-line global-require
+  )
+}, {
+  type: AssetType.Sound,
+  format: DataFormat.WAV,
+  id: null,
+  data: new Buffer(__webpack_require__(/*! arraybuffer-loader!./builtins/defaultSound.wav */ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultSound.wav") // eslint-disable-line global-require
+  )
+}, {
+  type: AssetType.ImageVector,
+  format: DataFormat.SVG,
+  id: null,
+  data: new Buffer(__webpack_require__(/*! arraybuffer-loader!./builtins/defaultVector.svg */ "./node_modules/arraybuffer-loader/index.js!./src/builtins/defaultVector.svg") // eslint-disable-line global-require
+  )
+}];
 /**
  * @type {BuiltinAssetRecord[]}
  */
+
 var BuiltinAssets = DefaultAssets.concat([]);
 
-var BuiltinHelper = function (_Helper) {
-    _inherits(BuiltinHelper, _Helper);
+var BuiltinHelper =
+/*#__PURE__*/
+function (_Helper) {
+  _inherits(BuiltinHelper, _Helper);
 
-    function BuiltinHelper(parent) {
-        _classCallCheck(this, BuiltinHelper);
+  function BuiltinHelper(parent) {
+    var _this;
 
-        /**
-         * In-memory storage for all built-in assets.
-         * @type {Object.<AssetType, AssetIdMap>} Maps asset type to a map of asset ID to actual assets.
-         * @typedef {Object.<string, BuiltinAssetRecord>} AssetIdMap - Maps asset ID to asset.
-         */
-        var _this = _possibleConstructorReturn(this, (BuiltinHelper.__proto__ || Object.getPrototypeOf(BuiltinHelper)).call(this, parent));
+    _classCallCheck(this, BuiltinHelper);
 
-        _this.assets = {};
-
-        BuiltinAssets.forEach(function (assetRecord) {
-            assetRecord.id = _this.cache(assetRecord.type, assetRecord.format, assetRecord.data, assetRecord.id);
-        });
-        return _this;
-    }
-
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(BuiltinHelper).call(this, parent));
     /**
-     * Call `setDefaultAssetId` on the parent `ScratchStorage` instance to register all built-in default assets.
+     * In-memory storage for all built-in assets.
+     * @type {Object.<AssetType, AssetIdMap>} Maps asset type to a map of asset ID to actual assets.
+     * @typedef {Object.<string, BuiltinAssetRecord>} AssetIdMap - Maps asset ID to asset.
      */
 
+    _this.assets = {};
+    BuiltinAssets.forEach(function (assetRecord) {
+      assetRecord.id = _this._store(assetRecord.type, assetRecord.format, assetRecord.data, assetRecord.id);
+    });
+    return _this;
+  }
+  /**
+   * Call `setDefaultAssetId` on the parent `ScratchStorage` instance to register all built-in default assets.
+   */
 
-    _createClass(BuiltinHelper, [{
-        key: 'registerDefaultAssets',
-        value: function registerDefaultAssets() {
-            var numAssets = DefaultAssets.length;
-            for (var assetIndex = 0; assetIndex < numAssets; ++assetIndex) {
-                var assetRecord = DefaultAssets[assetIndex];
-                this.parent.setDefaultAssetId(assetRecord.type, assetRecord.id);
-            }
-        }
 
-        /**
-         * Synchronously fetch a cached asset for a given asset id. Returns null if not found.
-         * @param {string} assetId - The id for the asset to fetch.
-         * @returns {?Asset} The asset for assetId, if it exists.
-         */
+  _createClass(BuiltinHelper, [{
+    key: "registerDefaultAssets",
+    value: function registerDefaultAssets() {
+      var numAssets = DefaultAssets.length;
 
-    }, {
-        key: 'get',
-        value: function get(assetId) {
-            var asset = null;
-            if (this.assets.hasOwnProperty(assetId)) {
-                /** @type{BuiltinAssetRecord} */
-                var assetRecord = this.assets[assetId];
-                asset = new Asset(assetRecord.type, assetRecord.id, assetRecord.format, assetRecord.data);
-            }
-            return asset;
-        }
+      for (var assetIndex = 0; assetIndex < numAssets; ++assetIndex) {
+        var assetRecord = DefaultAssets[assetIndex];
+        this.parent.setDefaultAssetId(assetRecord.type, assetRecord.id);
+      }
+    }
+    /**
+     * Synchronously fetch a cached asset for a given asset id. Returns null if not found.
+     * @param {string} assetId - The id for the asset to fetch.
+     * @returns {?Asset} The asset for assetId, if it exists.
+     */
 
-        /**
-         * Cache an asset for future lookups by ID.
-         * @param {AssetType} assetType - The type of the asset to cache.
-         * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
-         * @param {Buffer} data - The data for the cached asset.
-         * @param {string} id - The id for the cached asset.
-         * @returns {string} The calculated id of the cached asset, or the supplied id if the asset is mutable.
-         */
+  }, {
+    key: "get",
+    value: function get(assetId) {
+      var asset = null;
 
-    }, {
-        key: 'cache',
-        value: function cache(assetType, dataFormat, data, id) {
-            if (!dataFormat) throw new Error('Data cached without specifying its format');
-            if (id) {
-                if (this.assets.hasOwnProperty(id) && assetType.immutable) return id;
-            } else if (assetType.immutable) {
-                id = md5(data);
-            }
-            this.assets[id] = {
-                type: assetType,
-                format: dataFormat,
-                id: id,
-                data: data
-            };
-            return id;
-        }
+      if (this.assets.hasOwnProperty(assetId)) {
+        /** @type{BuiltinAssetRecord} */
+        var assetRecord = this.assets[assetId];
+        asset = new Asset(assetRecord.type, assetRecord.id, assetRecord.format, assetRecord.data);
+      }
 
-        /**
-         * Fetch an asset but don't process dependencies.
-         * @param {AssetType} assetType - The type of asset to fetch.
-         * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-         * @return {Promise.<Asset>} A promise for the contents of the asset.
-         */
+      return asset;
+    }
+    /**
+     * Alias for store (old name of store)
+     * @deprecated Use BuiltinHelper.store
+     * @param {AssetType} assetType - The type of the asset to cache.
+     * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
+     * @param {Buffer} data - The data for the cached asset.
+     * @param {string} id - The id for the cached asset.
+     * @returns {string} The calculated id of the cached asset, or the supplied id if the asset is mutable.
+     */
 
-    }, {
-        key: 'load',
-        value: function load(assetType, assetId) {
-            return Promise.resolve(this.get(assetId));
-        }
-    }]);
+  }, {
+    key: "cache",
+    value: function cache(assetType, dataFormat, data, id) {
+      log.warn('Deprecation: BuiltinHelper.cache has been replaced with BuiltinHelper.store.');
+      return this.store(assetType, dataFormat, data, id);
+    }
+    /**
+     * Deprecated external API for _store
+     * @deprecated Not for external use. Create assets and keep track of them outside of the storage instance.
+     * @param {AssetType} assetType - The type of the asset to cache.
+     * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
+     * @param {Buffer} data - The data for the cached asset.
+     * @param {(string|number)} id - The id for the cached asset.
+     * @returns {string} The calculated id of the cached asset, or the supplied id if the asset is mutable.
+     */
 
-    return BuiltinHelper;
+  }, {
+    key: "store",
+    value: function store(assetType, dataFormat, data, id) {
+      log.warn('Deprecation: use Storage.createAsset. BuiltinHelper is for internal use only.');
+      return this._store(assetType, dataFormat, data, id);
+    }
+    /**
+     * Cache an asset for future lookups by ID.
+     * @param {AssetType} assetType - The type of the asset to cache.
+     * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
+     * @param {Buffer} data - The data for the cached asset.
+     * @param {(string|number)} id - The id for the cached asset.
+     * @returns {string} The calculated id of the cached asset, or the supplied id if the asset is mutable.
+     */
+
+  }, {
+    key: "_store",
+    value: function _store(assetType, dataFormat, data, id) {
+      if (!dataFormat) throw new Error('Data cached without specifying its format');
+
+      if (id !== '' && id !== null && typeof id !== 'undefined') {
+        if (this.assets.hasOwnProperty(id) && assetType.immutable) return id;
+      } else if (assetType.immutable) {
+        id = md5(data);
+      } else {
+        throw new Error('Tried to cache data without an id');
+      }
+
+      this.assets[id] = {
+        type: assetType,
+        format: dataFormat,
+        id: id,
+        data: data
+      };
+      return id;
+    }
+    /**
+     * Fetch an asset but don't process dependencies.
+     * @param {AssetType} assetType - The type of asset to fetch.
+     * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+     * @return {Promise.<Asset>} A promise for the contents of the asset.
+     */
+
+  }, {
+    key: "load",
+    value: function load(assetType, assetId) {
+      return Promise.resolve(this.get(assetId));
+    }
+  }]);
+
+  return BuiltinHelper;
 }(Helper);
 
 module.exports = BuiltinHelper;
@@ -9679,25 +8185,22 @@ module.exports = BuiltinHelper;
   !*** ./src/DataFormat.js ***!
   \***************************/
 /*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
+/***/ (function(module, exports) {
 
 /**
  * Enumeration of the supported data formats.
  * @enum {string}
  */
 var DataFormat = {
-    JPG: 'jpg',
-    JSON: 'json',
-    MP3: 'mp3',
-    PNG: 'png',
-    SB2: 'sb2',
-    SVG: 'svg',
-    WAV: 'wav'
+  JPG: 'jpg',
+  JSON: 'json',
+  MP3: 'mp3',
+  PNG: 'png',
+  SB2: 'sb2',
+  SB3: 'sb3',
+  SVG: 'svg',
+  WAV: 'wav'
 };
-
 module.exports = DataFormat;
 
 /***/ }),
@@ -9707,122 +8210,46 @@ module.exports = DataFormat;
   !*** ./src/Helper.js ***!
   \***********************/
 /*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+/***/ (function(module, exports) {
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
 /**
  * Base class for asset load/save helpers.
  * @abstract
  */
-var Helper = function () {
-    function Helper(parent) {
-        _classCallCheck(this, Helper);
+var Helper =
+/*#__PURE__*/
+function () {
+  function Helper(parent) {
+    _classCallCheck(this, Helper);
 
-        this.parent = parent;
+    this.parent = parent;
+  }
+  /**
+   * Fetch an asset but don't process dependencies.
+   * @param {AssetType} assetType - The type of asset to fetch.
+   * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+   * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
+   * @return {Promise.<Asset>} A promise for the contents of the asset.
+   */
+
+
+  _createClass(Helper, [{
+    key: "load",
+    value: function load(assetType, assetId, dataFormat) {
+      return Promise.reject(new Error("No asset of type ".concat(assetType, " for ID ").concat(assetId, " with format ").concat(dataFormat)));
     }
+  }]);
 
-    /**
-     * Fetch an asset but don't process dependencies.
-     * @param {AssetType} assetType - The type of asset to fetch.
-     * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-     * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
-     * @return {Promise.<Asset>} A promise for the contents of the asset.
-     */
-
-
-    _createClass(Helper, [{
-        key: "load",
-        value: function load(assetType, assetId, dataFormat) {
-            return Promise.reject(new Error("No asset of type " + assetType + " for ID " + assetId + " with format " + dataFormat));
-        }
-    }]);
-
-    return Helper;
+  return Helper;
 }();
 
 module.exports = Helper;
-
-/***/ }),
-
-/***/ "./src/LocalHelper.js":
-/*!****************************!*\
-  !*** ./src/LocalHelper.js ***!
-  \****************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var localforage = __webpack_require__(/*! localforage */ "./node_modules/localforage/dist/localforage.js");
-
-var Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
-var Helper = __webpack_require__(/*! ./Helper */ "./src/Helper.js");
-
-/**
- * Implements storage on the local device, available even when the device has no network connection.
- */
-
-var LocalHelper = function (_Helper) {
-    _inherits(LocalHelper, _Helper);
-
-    function LocalHelper(parent) {
-        _classCallCheck(this, LocalHelper);
-
-        var _this = _possibleConstructorReturn(this, (LocalHelper.__proto__ || Object.getPrototypeOf(LocalHelper)).call(this, parent));
-
-        localforage.config({
-            name: 'Scratch 3.0',
-            size: 100 * 1024 * 1024
-        });
-        return _this;
-    }
-
-    /**
-     * Fetch an asset but don't process dependencies.
-     * @param {AssetType} assetType - The type of asset to fetch.
-     * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-     * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
-     * @return {Promise.<Asset>} A promise for the contents of the asset.
-     */
-
-
-    _createClass(LocalHelper, [{
-        key: 'load',
-        value: function load(assetType, assetId, dataFormat) {
-            return new Promise(function (fulfill, reject) {
-                var fileName = [assetId, dataFormat].join('.');
-                localforage.getItem(fileName).then(function (data) {
-                    if (data === null) {
-                        fulfill(null);
-                    } else {
-                        fulfill(new Asset(assetType, assetId, dataFormat, data));
-                    }
-                }, function (error) {
-                    reject(error);
-                });
-            });
-        }
-    }]);
-
-    return LocalHelper;
-}(Helper);
-
-module.exports = LocalHelper;
 
 /***/ }),
 
@@ -9833,218 +8260,298 @@ module.exports = LocalHelper;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+var log = __webpack_require__(/*! ./log */ "./src/log.js");
+
 var BuiltinHelper = __webpack_require__(/*! ./BuiltinHelper */ "./src/BuiltinHelper.js");
-var LocalHelper = __webpack_require__(/*! ./LocalHelper */ "./src/LocalHelper.js");
+
 var WebHelper = __webpack_require__(/*! ./WebHelper */ "./src/WebHelper.js");
 
 var _Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
+
 var _AssetType = __webpack_require__(/*! ./AssetType */ "./src/AssetType.js");
+
 var _DataFormat = __webpack_require__(/*! ./DataFormat */ "./src/DataFormat.js");
 
-var ScratchStorage = function () {
-    function ScratchStorage() {
-        _classCallCheck(this, ScratchStorage);
+var ScratchStorage =
+/*#__PURE__*/
+function () {
+  function ScratchStorage() {
+    _classCallCheck(this, ScratchStorage);
 
-        this.defaultAssetId = {};
+    this.defaultAssetId = {};
+    this.builtinHelper = new BuiltinHelper(this);
+    this.webHelper = new WebHelper(this);
+    this.builtinHelper.registerDefaultAssets(this);
+    this._helpers = [{
+      helper: this.builtinHelper,
+      priority: 100
+    }, {
+      helper: this.webHelper,
+      priority: -100
+    }];
+  }
+  /**
+   * @return {Asset} - the `Asset` class constructor.
+   * @constructor
+   */
 
-        this.builtinHelper = new BuiltinHelper(this);
-        this.webHelper = new WebHelper(this);
-        this.localHelper = new LocalHelper(this);
 
-        this.builtinHelper.registerDefaultAssets(this);
-    }
+  _createClass(ScratchStorage, [{
+    key: "addHelper",
 
     /**
+     * Add a storage helper to this manager. Helpers with a higher priority number will be checked first when loading
+     * or storing assets. For comparison, the helper for built-in assets has `priority=100` and the default web helper
+     * has `priority=-100`. The relative order of helpers with equal priorities is undefined.
+     * @param {Helper} helper - the helper to be added.
+     * @param {number} [priority] - the priority for this new helper (default: 0).
+     */
+    value: function addHelper(helper) {
+      var priority = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+
+      this._helpers.push({
+        helper: helper,
+        priority: priority
+      });
+
+      this._helpers.sort(function (a, b) {
+        return b.priority - a.priority;
+      });
+    }
+    /**
+     * Synchronously fetch a cached asset from built-in storage. Assets are cached when they are loaded.
+     * @param {string} assetId - The id of the asset to fetch.
+     * @returns {?Asset} The asset, if it exists.
+     */
+
+  }, {
+    key: "get",
+    value: function get(assetId) {
+      return this.builtinHelper.get(assetId);
+    }
+    /**
+     * Deprecated API for caching built-in assets. Use createAsset.
+     * @param {AssetType} assetType - The type of the asset to cache.
+     * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
+     * @param {Buffer} data - The data for the cached asset.
+     * @param {string} id - The id for the cached asset.
+     * @returns {string} The calculated id of the cached asset, or the supplied id if the asset is mutable.
+     */
+
+  }, {
+    key: "cache",
+    value: function cache(assetType, dataFormat, data, id) {
+      log.warn('Deprecation: Storage.cache is deprecated. Use Storage.createAsset, and store assets externally.');
+      return this.builtinHelper._store(assetType, dataFormat, data, id);
+    }
+    /**
+     * Construct an Asset, and optionally generate an md5 hash of its data to create an id
+     * @param {AssetType} assetType - The type of the asset to cache.
+     * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
+     * @param {Buffer} data - The data for the cached asset.
+     * @param {string} [id] - The id for the cached asset.
+     * @param {bool} [generateId] - flag to set id to an md5 hash of data if `id` isn't supplied
+     * @returns {Asset} generated Asset with `id` attribute set if not supplied
+     */
+
+  }, {
+    key: "createAsset",
+    value: function createAsset(assetType, dataFormat, data, id, generateId) {
+      if (!dataFormat) throw new Error('Tried to create asset without a dataFormat');
+      return new _Asset(assetType, id, dataFormat, data, generateId);
+    }
+    /**
+     * Register a web-based source for assets. Sources will be checked in order of registration.
+     * @param {Array.<AssetType>} types - The types of asset provided by this source.
+     * @param {UrlFunction} getFunction - A function which computes a GET URL from an Asset.
+     * @param {UrlFunction} createFunction - A function which computes a POST URL for asset data.
+     * @param {UrlFunction} updateFunction - A function which computes a PUT URL for asset data.
+     */
+
+  }, {
+    key: "addWebStore",
+    value: function addWebStore(types, getFunction, createFunction, updateFunction) {
+      this.webHelper.addStore(types, getFunction, createFunction, updateFunction);
+    }
+    /**
+     * Register a web-based source for assets. Sources will be checked in order of registration.
+     * @deprecated Please use addWebStore
+     * @param {Array.<AssetType>} types - The types of asset provided by this source.
+     * @param {UrlFunction} urlFunction - A function which computes a GET URL from an Asset.
+     */
+
+  }, {
+    key: "addWebSource",
+    value: function addWebSource(types, urlFunction) {
+      log.warn('Deprecation: Storage.addWebSource has been replaced by addWebStore.');
+      this.addWebStore(types, urlFunction);
+    }
+    /**
+     * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
+     * @param {AssetType} type - Get the default ID for assets of this type.
+     * @return {?string} The ID of the default asset of the given type, if any.
+     */
+
+  }, {
+    key: "getDefaultAssetId",
+    value: function getDefaultAssetId(type) {
+      if (this.defaultAssetId.hasOwnProperty(type.name)) {
+        return this.defaultAssetId[type.name];
+      }
+    }
+    /**
+     * Set the default ID for a particular type of asset. This default asset will be used if a requested asset cannot
+     * be found and automatic fallback is enabled. Ideally this should be an asset that is available locally or even
+     * one built into this module.
+     * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
+     * @param {AssetType} type - The type of asset for which the default will be set.
+     * @param {string} id - The default ID to use for this type of asset.
+     */
+
+  }, {
+    key: "setDefaultAssetId",
+    value: function setDefaultAssetId(type, id) {
+      this.defaultAssetId[type.name] = id;
+    }
+    /**
+     * Fetch an asset by type & ID.
+     * @param {AssetType} assetType - The type of asset to fetch. This also determines which asset store to use.
+     * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+     * @param {DataFormat} [dataFormat] - Optional: load this format instead of the AssetType's default.
+     * @return {Promise.<Asset>} A promise for the requested Asset.
+     *   If the promise is resolved with non-null, the value is the requested asset or a fallback.
+     *   If the promise is resolved with null, the desired asset could not be found with the current asset sources.
+     *   If the promise is rejected, there was an error on at least one asset source. HTTP 404 does not count as an
+     *   error here, but (for example) HTTP 403 does.
+     */
+
+  }, {
+    key: "load",
+    value: function load(assetType, assetId, dataFormat) {
+      var _this = this;
+
+      /** @type {Helper[]} */
+      var helpers = this._helpers.map(function (x) {
+        return x.helper;
+      });
+
+      var errors = [];
+      var helperIndex = 0;
+      dataFormat = dataFormat || assetType.runtimeFormat;
+      return new Promise(function (resolve, reject) {
+        var tryNextHelper = function tryNextHelper() {
+          if (helperIndex < helpers.length) {
+            var helper = helpers[helperIndex++];
+            helper.load(assetType, assetId, dataFormat).then(function (asset) {
+              if (asset === null) {
+                tryNextHelper();
+              } else {
+                // TODO? this.localHelper.cache(assetType, assetId, asset);
+                if (helper !== _this.builtinHelper && assetType.immutable) {
+                  asset.assetId = _this.builtinHelper._store(assetType, asset.dataFormat, asset.data, assetId);
+                } // Note that other attempts may have caused errors, effectively suppressed here.
+
+
+                resolve(asset);
+              }
+            }, function (error) {
+              errors.push(error); // TODO: maybe some types of error should prevent trying the next helper?
+
+              tryNextHelper();
+            });
+          } else if (errors.length === 0) {
+            // Nothing went wrong but we couldn't find the asset.
+            resolve(null);
+          } else {
+            // At least one thing went wrong and also we couldn't find the asset.
+            reject(errors);
+          }
+        };
+
+        tryNextHelper();
+      });
+    }
+    /**
+     * Store an asset by type & ID.
+     * @param {AssetType} assetType - The type of asset to fetch. This also determines which asset store to use.
+     * @param {?DataFormat} [dataFormat] - Optional: load this format instead of the AssetType's default.
+     * @param {Buffer} data - Data to store for the asset
+     * @param {?string} [assetId] - The ID of the asset to fetch: a project ID, MD5, etc.
+     * @return {Promise.<object>} A promise for asset metadata
+     */
+
+  }, {
+    key: "store",
+    value: function store(assetType, dataFormat, data, assetId) {
+      var _this2 = this;
+
+      dataFormat = dataFormat || assetType.runtimeFormat;
+      return new Promise(function (resolve, reject) {
+        return _this2.webHelper.store(assetType, dataFormat, data, assetId).then(function (body) {
+          _this2.builtinHelper._store(assetType, dataFormat, data, body.id);
+
+          return resolve(body);
+        }).catch(function (error) {
+          return reject(error);
+        });
+      });
+    }
+  }, {
+    key: "Asset",
+    get: function get() {
+      return _Asset;
+    }
+    /**
+     * @return {AssetType} - the list of supported asset types.
+     * @constructor
+     */
+
+  }, {
+    key: "AssetType",
+    get: function get() {
+      return _AssetType;
+    }
+    /**
+     * @return {DataFormat} - the list of supported data formats.
+     * @constructor
+     */
+
+  }, {
+    key: "DataFormat",
+    get: function get() {
+      return _DataFormat;
+    }
+    /**
+     * @deprecated Please use the `Asset` member of a storage instance instead.
      * @return {Asset} - the `Asset` class constructor.
      * @constructor
      */
 
+  }], [{
+    key: "Asset",
+    get: function get() {
+      return _Asset;
+    }
+    /**
+     * @deprecated Please use the `AssetType` member of a storage instance instead.
+     * @return {AssetType} - the list of supported asset types.
+     * @constructor
+     */
 
-    _createClass(ScratchStorage, [{
-        key: 'get',
+  }, {
+    key: "AssetType",
+    get: function get() {
+      return _AssetType;
+    }
+  }]);
 
-
-        /**
-         * Synchronously fetch a cached asset from built-in storage. Assets are cached when they are loaded.
-         * @param {string} assetId - The id of the asset to fetch.
-         * @returns {?Asset} The asset, if it exists.
-         */
-        value: function get(assetId) {
-            return this.builtinHelper.get(assetId);
-        }
-
-        /**
-         * Cache an asset for future lookups by ID.
-         * @param {AssetType} assetType - The type of the asset to cache.
-         * @param {DataFormat} dataFormat - The dataFormat of the data for the cached asset.
-         * @param {Buffer} data - The data for the cached asset.
-         * @param {string} id - The id for the cached asset.
-         * @returns {string} The calculated id of the cached asset, or the supplied id if the asset is mutable.
-         */
-
-    }, {
-        key: 'cache',
-        value: function cache(assetType, dataFormat, data, id) {
-            return this.builtinHelper.cache(assetType, dataFormat, data, id);
-        }
-
-        /**
-         * Register a web-based source for assets. Sources will be checked in order of registration.
-         * @param {Array.<AssetType>} types - The types of asset provided by this source.
-         * @param {UrlFunction} urlFunction - A function which computes a URL from an Asset.
-         */
-
-    }, {
-        key: 'addWebSource',
-        value: function addWebSource(types, urlFunction) {
-            this.webHelper.addSource(types, urlFunction);
-        }
-
-        /**
-         * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
-         * @param {AssetType} type - Get the default ID for assets of this type.
-         * @return {?string} The ID of the default asset of the given type, if any.
-         */
-
-    }, {
-        key: 'getDefaultAssetId',
-        value: function getDefaultAssetId(type) {
-            if (this.defaultAssetId.hasOwnProperty(type.name)) {
-                return this.defaultAssetId[type.name];
-            }
-        }
-
-        /**
-         * Set the default ID for a particular type of asset. This default asset will be used if a requested asset cannot
-         * be found and automatic fallback is enabled. Ideally this should be an asset that is available locally or even
-         * one built into this module.
-         * TODO: Should this be removed in favor of requesting an asset with `null` as the ID?
-         * @param {AssetType} type - The type of asset for which the default will be set.
-         * @param {string} id - The default ID to use for this type of asset.
-         */
-
-    }, {
-        key: 'setDefaultAssetId',
-        value: function setDefaultAssetId(type, id) {
-            this.defaultAssetId[type.name] = id;
-        }
-
-        /**
-         * Fetch an asset by type & ID.
-         * @param {AssetType} assetType - The type of asset to fetch. This also determines which asset store to use.
-         * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-         * @param {DataFormat} [dataFormat] - Optional: load this format instead of the AssetType's default.
-         * @return {Promise.<Asset>} A promise for the requested Asset.
-         *   If the promise is fulfilled with non-null, the value is the requested asset or a fallback.
-         *   If the promise is fulfilled with null, the desired asset could not be found with the current asset sources.
-         *   If the promise is rejected, there was an error on at least one asset source. HTTP 404 does not count as an
-         *   error here, but (for example) HTTP 403 does.
-         */
-
-    }, {
-        key: 'load',
-        value: function load(assetType, assetId, dataFormat) {
-            var _this = this;
-
-            /** @type {Helper[]} */
-            var helpers = [this.builtinHelper, this.localHelper, this.webHelper];
-            var errors = [];
-            var helperIndex = 0;
-            dataFormat = dataFormat || assetType.runtimeFormat;
-
-            return new Promise(function (fulfill, reject) {
-                var tryNextHelper = function tryNextHelper() {
-                    if (helperIndex < helpers.length) {
-                        var helper = helpers[helperIndex++];
-                        helper.load(assetType, assetId, dataFormat).then(function (asset) {
-                            if (asset === null) {
-                                tryNextHelper();
-                            } else {
-                                // TODO? this.localHelper.cache(assetType, assetId, asset);
-                                if (helper !== _this.builtinHelper && assetType.immutable) {
-                                    asset.assetId = _this.builtinHelper.cache(assetType, asset.dataFormat, asset.data, assetId);
-                                }
-                                // Note that other attempts may have caused errors, effectively suppressed here.
-                                fulfill(asset);
-                            }
-                        }, function (error) {
-                            errors.push(error);
-                            // TODO: maybe some types of error should prevent trying the next helper?
-                            tryNextHelper();
-                        });
-                    } else if (errors.length === 0) {
-                        // Nothing went wrong but we couldn't find the asset.
-                        fulfill(null);
-                    } else {
-                        // At least one thing went wrong and also we couldn't find the asset.
-                        reject(errors);
-                    }
-                };
-
-                tryNextHelper();
-            });
-        }
-    }, {
-        key: 'Asset',
-        get: function get() {
-            return _Asset;
-        }
-
-        /**
-         * @return {AssetType} - the list of supported asset types.
-         * @constructor
-         */
-
-    }, {
-        key: 'AssetType',
-        get: function get() {
-            return _AssetType;
-        }
-
-        /**
-         * @return {DataFormat} - the list of supported data formats.
-         * @constructor
-         */
-
-    }, {
-        key: 'DataFormat',
-        get: function get() {
-            return _DataFormat;
-        }
-
-        /**
-         * @deprecated Please use the `Asset` member of a storage instance instead.
-         * @return {Asset} - the `Asset` class constructor.
-         * @constructor
-         */
-
-    }], [{
-        key: 'Asset',
-        get: function get() {
-            return _Asset;
-        }
-
-        /**
-         * @deprecated Please use the `AssetType` member of a storage instance instead.
-         * @return {AssetType} - the list of supported asset types.
-         * @constructor
-         */
-
-    }, {
-        key: 'AssetType',
-        get: function get() {
-            return _AssetType;
-        }
-    }]);
-
-    return ScratchStorage;
+  return ScratchStorage;
 }();
 
 module.exports = ScratchStorage;
@@ -10058,138 +8565,238 @@ module.exports = ScratchStorage;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-/* WEBPACK VAR INJECTION */(function(Buffer) {
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+/* WEBPACK VAR INJECTION */(function(Buffer) {function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
 var nets = __webpack_require__(/*! nets */ "./node_modules/nets/index.js");
 
-var Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
-var Helper = __webpack_require__(/*! ./Helper */ "./src/Helper.js");
+var log = __webpack_require__(/*! ./log */ "./src/log.js");
 
+var Asset = __webpack_require__(/*! ./Asset */ "./src/Asset.js");
+
+var Helper = __webpack_require__(/*! ./Helper */ "./src/Helper.js");
 /**
  * @typedef {function} UrlFunction - A function which computes a URL from asset information.
  * @param {Asset} - The asset for which the URL should be computed.
- * @returns {string} - The URL for the asset.
+ * @returns {(string|object)} - A string representing the URL for the asset request OR an object with configuration for
+ *                              the underlying `nets` call (necessary for configuring e.g. authentication)
  */
 
-var WebHelper = function (_Helper) {
-    _inherits(WebHelper, _Helper);
 
-    function WebHelper(parent) {
-        _classCallCheck(this, WebHelper);
+var WebHelper =
+/*#__PURE__*/
+function (_Helper) {
+  _inherits(WebHelper, _Helper);
 
-        /**
-         * @type {Array.<SourceRecord>}
-         * @typedef {object} SourceRecord
-         * @property {Array.<string>} types - The types of asset provided by this source, from AssetType's name field.
-         * @property {UrlFunction} urlFunction - A function which computes a URL from an Asset.
-         */
-        var _this = _possibleConstructorReturn(this, (WebHelper.__proto__ || Object.getPrototypeOf(WebHelper)).call(this, parent));
+  function WebHelper(parent) {
+    var _this;
 
-        _this.sources = [];
-        return _this;
-    }
+    _classCallCheck(this, WebHelper);
 
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(WebHelper).call(this, parent));
     /**
-     * Register a web-based source for assets. Sources will be checked in order of registration.
-     * @param {Array.<AssetType>} types - The types of asset provided by this source.
-     * @param {UrlFunction} urlFunction - A function which computes a URL from an Asset.
+     * @type {Array.<StoreRecord>}
+     * @typedef {object} StoreRecord
+     * @property {Array.<string>} types - The types of asset provided by this store, from AssetType's name field.
+     * @property {UrlFunction} getFunction - A function which computes a URL from an Asset.
+     * @property {UrlFunction} createFunction - A function which computes a URL from an Asset.
+     * @property {UrlFunction} updateFunction - A function which computes a URL from an Asset.
      */
 
+    _this.stores = [];
+    return _this;
+  }
+  /**
+   * Register a web-based source for assets. Sources will be checked in order of registration.
+   * @deprecated Please use addStore
+   * @param {Array.<AssetType>} types - The types of asset provided by this source.
+   * @param {UrlFunction} urlFunction - A function which computes a URL from an Asset.
+   */
 
-    _createClass(WebHelper, [{
-        key: 'addSource',
-        value: function addSource(types, urlFunction) {
-            this.sources.push({
-                types: types.map(function (assetType) {
-                    return assetType.name;
-                }),
-                urlFunction: urlFunction
+
+  _createClass(WebHelper, [{
+    key: "addSource",
+    value: function addSource(types, urlFunction) {
+      log.warn('Deprecation: WebHelper.addSource has been replaced with WebHelper.addStore.');
+      this.addStore(types, urlFunction);
+    }
+    /**
+     * Register a web-based store for assets. Sources will be checked in order of registration.
+     * @param {Array.<AssetType>} types - The types of asset provided by this store.
+     * @param {UrlFunction} getFunction - A function which computes a GET URL for an Asset
+     * @param {UrlFunction} createFunction - A function which computes a POST URL for an Asset
+     * @param {UrlFunction} updateFunction - A function which computes a PUT URL for an Asset
+     */
+
+  }, {
+    key: "addStore",
+    value: function addStore(types, getFunction, createFunction, updateFunction) {
+      this.stores.push({
+        types: types.map(function (assetType) {
+          return assetType.name;
+        }),
+        get: getFunction,
+        create: createFunction,
+        update: updateFunction
+      });
+    }
+    /**
+     * Fetch an asset but don't process dependencies.
+     * @param {AssetType} assetType - The type of asset to fetch.
+     * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+     * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
+     * @return {Promise.<Asset>} A promise for the contents of the asset.
+     */
+
+  }, {
+    key: "load",
+    value: function load(assetType, assetId, dataFormat) {
+      /** @type {Array.<{url:string, result:*}>} List of URLs attempted & errors encountered. */
+      var errors = [];
+      var stores = this.stores.slice();
+      var asset = new Asset(assetType, assetId, dataFormat);
+      var storeIndex = 0;
+      return new Promise(function (resolve, reject) {
+        var tryNextSource = function tryNextSource() {
+          /** @type {UrlFunction} */
+          var reqConfigFunction;
+
+          while (storeIndex < stores.length) {
+            var store = stores[storeIndex];
+            ++storeIndex;
+
+            if (store.types.indexOf(assetType.name) >= 0) {
+              reqConfigFunction = store.get;
+              break;
+            }
+          }
+
+          if (reqConfigFunction) {
+            var reqConfig = reqConfigFunction(asset);
+
+            if (reqConfig === false) {
+              tryNextSource();
+              return;
+            }
+
+            if (typeof reqConfig === 'string') {
+              reqConfig = {
+                url: reqConfig
+              };
+            }
+
+            nets(Object.assign({
+              method: 'get'
+            }, reqConfig), function (err, resp, body) {
+              // body is a Buffer
+              if (err || Math.floor(resp.statusCode / 100) !== 2) {
+                // 兼容处理: file:// 协议下 ajax 请求，通过走 rawRequest, status code 为 0
+                if (resp.statusCode === 0 && resp.rawRequest && resp.rawRequest.readyState === 4) {
+                  if (resp.rawRequest.response) {
+                    var body2 = new Buffer(new Uint8Array(resp.rawRequest.response));
+                    asset.setData(body2, dataFormat);
+                    fulfill(asset);
+                  } else {
+                    fulfill(null); // no sources matching asset
+                  }
+                } else {
+                  tryNextSource();
+                }
+              } else {
+                asset.setData(body, dataFormat);
+                resolve(asset);
+              }
             });
+          } else if (errors.length > 0) {
+            reject(errors);
+          } else {
+            resolve(null); // no stores matching asset
+          }
+        };
+
+        tryNextSource();
+      });
+    }
+    /**
+     * Create or update an asset with provided data. The create function is called if no asset id is provided
+     * @param {AssetType} assetType - The type of asset to create or update.
+     * @param {?DataFormat} dataFormat - DataFormat of the data for the stored asset.
+     * @param {Buffer} data - The data for the cached asset.
+     * @param {?string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
+     * @return {Promise.<object>} A promise for the response from the create or update request
+     */
+
+  }, {
+    key: "store",
+    value: function store(assetType, dataFormat, data, assetId) {
+      var asset = new Asset(assetType, assetId, dataFormat); // If we have an asset id, we should update, otherwise create to get an id
+
+      var create = assetId === '' || assetId === null || typeof assetId === 'undefined'; // Use the first store with the appropriate asset type and url function
+
+      var store = this.stores.filter(function (s) {
+        return (// Only use stores for the incoming asset type
+          s.types.indexOf(assetType.name) !== -1 && ( // Only use stores that have a create function if this is a create request
+          // or an update function if this is an update request
+          create && s.create || s.update)
+        );
+      })[0];
+      var method = create ? 'post' : 'put';
+      return new Promise(function (resolve, reject) {
+        if (!store) return reject('No appropriate stores');
+        var reqConfig = create ? store.create(asset) : store.update(asset);
+
+        if (typeof reqConfig === 'string') {
+          reqConfig = {
+            url: reqConfig
+          };
         }
 
-        /**
-         * Fetch an asset but don't process dependencies.
-         * @param {AssetType} assetType - The type of asset to fetch.
-         * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-         * @param {DataFormat} dataFormat - The file format / file extension of the asset to fetch: PNG, JPG, etc.
-         * @return {Promise.<Asset>} A promise for the contents of the asset.
-         */
+        return nets(Object.assign({
+          body: data,
+          method: method,
+          encoding: undefined // eslint-disable-line no-undefined
 
-    }, {
-        key: 'load',
-        value: function load(assetType, assetId, dataFormat) {
+        }, reqConfig), function (err, resp, body) {
+          if (err || Math.floor(resp.statusCode / 100) !== 2) {
+            return reject(err || resp.statusCode);
+          } // xhr makes it difficult to both send FormData and automatically
+          // parse a JSON response. So try to parse everything as JSON.
 
-            /** @type {Array.<{url:string, result:*}>} List of URLs attempted & errors encountered. */
-            var errors = [];
-            var sources = this.sources.slice();
-            var asset = new Asset(assetType, assetId, dataFormat);
-            var sourceIndex = 0;
 
-            return new Promise(function (fulfill, reject) {
+          if (typeof body === 'string') {
+            try {
+              body = JSON.parse(body);
+            } catch (parseError) {
+              // If it's not parseable, then we can't add the id even
+              // if we want to, so stop here
+              return resolve(body);
+            }
+          }
 
-                var tryNextSource = function tryNextSource() {
+          return resolve(Object.assign({
+            id: body['content-name'] || assetId
+          }, body));
+        });
+      });
+    }
+  }]);
 
-                    /** @type {UrlFunction} */
-                    var urlFunction = void 0;
-
-                    while (sourceIndex < sources.length) {
-                        var source = sources[sourceIndex];
-                        ++sourceIndex;
-                        if (source.types.indexOf(assetType.name) >= 0) {
-                            urlFunction = source.urlFunction;
-                            break;
-                        }
-                    }
-
-                    if (urlFunction) {
-                        var url = urlFunction(asset);
-                        if (url === false) {
-                            tryNextSource();
-                            return;
-                        }
-
-                        nets({ url: url }, function (err, resp, body) {
-                            // body is a Buffer
-                            if (err || Math.floor(resp.statusCode / 100) !== 2) {
-                                // 兼容处理: file:// 协议下 ajax 请求，通过走 rawRequest, status code 为 0
-                                if (resp.statusCode === 0 && resp.rawRequest && resp.rawRequest.readyState === 4) {
-                                    if (resp.rawRequest.response) {
-                                        var body2 = new Buffer(new Uint8Array(resp.rawRequest.response));
-                                        asset.setData(body2, dataFormat);
-                                        fulfill(asset);
-                                    } else {
-                                        fulfill(null); // no sources matching asset
-                                    }
-                                } else {
-                                    tryNextSource();
-                                }
-                            } else {
-                                asset.setData(body, dataFormat);
-                                fulfill(asset);
-                            }
-                        });
-                    } else if (errors.length > 0) {
-                        reject(errors);
-                    } else {
-                        fulfill(null); // no sources matching asset
-                    }
-                };
-
-                tryNextSource();
-            });
-        }
-    }]);
-
-    return WebHelper;
+  return WebHelper;
 }(Helper);
 
 module.exports = WebHelper;
@@ -10204,16 +8811,28 @@ module.exports = WebHelper;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-
-
 var ScratchStorage = __webpack_require__(/*! ./ScratchStorage */ "./src/ScratchStorage.js");
-
 /**
  * Export for use with NPM & Node.js.
  * @type {ScratchStorage}
  */
+
+
 module.exports = ScratchStorage;
+
+/***/ }),
+
+/***/ "./src/log.js":
+/*!********************!*\
+  !*** ./src/log.js ***!
+  \********************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var minilog = __webpack_require__(/*! minilog */ "./node_modules/minilog/lib/web/index.js");
+
+minilog.enable();
+module.exports = minilog('storage');
 
 /***/ })
 
