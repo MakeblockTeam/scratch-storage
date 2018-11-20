@@ -1913,9 +1913,9 @@ function (_Helper) {
                   if (resp.rawRequest.response) {
                     var body2 = new Buffer(new Uint8Array(resp.rawRequest.response));
                     asset.setData(body2, dataFormat);
-                    fulfill(asset);
+                    resolve(asset);
                   } else {
-                    fulfill(null); // no sources matching asset
+                    resolve(null); // no sources matching asset
                   }
                 } else {
                   tryNextSource();
