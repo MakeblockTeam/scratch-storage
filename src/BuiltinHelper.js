@@ -24,7 +24,7 @@ const DefaultAssets = [
         format: DataFormat.PNG,
         id: null,
         data: new Buffer(
-            require('arraybuffer-loader!./builtins/defaultBitmap.png') // eslint-disable-line global-require
+            require('!arraybuffer-loader!./builtins/defaultBitmap.png') // eslint-disable-line global-require
         )
     },
     {
@@ -32,7 +32,7 @@ const DefaultAssets = [
         format: DataFormat.WAV,
         id: null,
         data: new Buffer(
-            require('arraybuffer-loader!./builtins/defaultSound.wav') // eslint-disable-line global-require
+            require('!arraybuffer-loader!./builtins/defaultSound.wav') // eslint-disable-line global-require
         )
     },
     {
@@ -40,7 +40,7 @@ const DefaultAssets = [
         format: DataFormat.SVG,
         id: null,
         data: new Buffer(
-            require('arraybuffer-loader!./builtins/defaultVector.svg') // eslint-disable-line global-require
+            require('!arraybuffer-loader!./builtins/defaultVector.svg') // eslint-disable-line global-require
         )
     }
 ];
@@ -152,9 +152,14 @@ class BuiltinHelper extends Helper {
      * Fetch an asset but don't process dependencies.
      * @param {AssetType} assetType - The type of asset to fetch.
      * @param {string} assetId - The ID of the asset to fetch: a project ID, MD5, etc.
-     * @return {Promise.<Asset>} A promise for the contents of the asset.
+     * @return {?Promise.<Asset>} A promise for the contents of the asset.
      */
     load (assetType, assetId) {
+        if (!this.get(assetId)) {
+            // Return null immediately so Storage can quickly move to trying the
+            // next helper.
+            return null;
+        }
         return Promise.resolve(this.get(assetId));
     }
 }
